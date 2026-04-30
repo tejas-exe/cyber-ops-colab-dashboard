@@ -41,13 +41,11 @@ export interface CVEItem {
 
 // ── Shared API client ────────────────────────────────────────────────────────
 
-const getToken = () => localStorage.getItem("accessToken");
-
 export const apiClient = new ApiService(
   (import.meta as ImportMeta).env.VITE_API_BASE_URL || "http://localhost:3000",
   10_000,
   {},
-  getToken
+  true
 );
 
 // ── API functions ─────────────────────────────────────────────────────────────
