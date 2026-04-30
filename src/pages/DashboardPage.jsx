@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import "../index.css";
 import VirtualizedCVEList from "../components/VirtualizedCVEList";
+import DiscussionRoom from "../components/DiscussionRoom";
 import {
   useUserMeta,
   useWorkspaces,
@@ -707,6 +708,12 @@ export default function DashboardPage() {
   return (
     <div style={{ minHeight: '100vh', paddingBottom: '5rem' }}>
       {!workspaceId ? renderWorkspacesGrid() : renderWorkspaceDetail()}
+      {workspaceId && selectedWorkspace && (
+        <DiscussionRoom
+          workspaceName={selectedWorkspace.name}
+          members={selectedWorkspace.members || []}
+        />
+      )}
     </div>
   );
 }
