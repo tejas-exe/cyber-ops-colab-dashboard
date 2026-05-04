@@ -16,9 +16,9 @@ const PALETTE = [
 function MemberAvatar({ member, index, size = 40 }) {
   const [hovered, setHovered] = useState(false);
   const [from, to] = PALETTE[index % PALETTE.length];
-  const name  = member?.user?.name  || member?.name  || "Unknown";
+  const name = member?.user?.name || member?.name || "Unknown";
   const email = member?.user?.email || member?.email || "";
-  const role  = member?.role || "Member";
+  const role = member?.role || "Member";
 
   return (
     <div
@@ -56,18 +56,18 @@ function MemberAvatar({ member, index, size = 40 }) {
         }}>
           {/* arrow */}
           <div style={{
-            position:"absolute", top:"100%", left:"50%",
-            transform:"translateX(-50%)", borderLeft:"6px solid transparent",
-            borderRight:"6px solid transparent",
-            borderTop:"6px solid rgba(255,255,255,0.12)",
-          }}/>
-          <p style={{ margin:0, fontSize:"0.83rem", fontWeight:700, color:"#f1f5f9" }}>{name}</p>
-          {email && <p style={{ margin:"2px 0 0", fontSize:"0.72rem", color:"rgba(148,163,184,0.85)" }}>{email}</p>}
+            position: "absolute", top: "100%", left: "50%",
+            transform: "translateX(-50%)", borderLeft: "6px solid transparent",
+            borderRight: "6px solid transparent",
+            borderTop: "6px solid rgba(255,255,255,0.12)",
+          }} />
+          <p style={{ margin: 0, fontSize: "0.83rem", fontWeight: 700, color: "#f1f5f9" }}>{name}</p>
+          {email && <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "rgba(148,163,184,0.85)" }}>{email}</p>}
           <span style={{
-            display:"inline-block", marginTop:"5px",
-            fontSize:"0.67rem", fontWeight:700, textTransform:"uppercase",
-            letterSpacing:"0.06em", color: from,
-            background:`${from}22`, padding:"2px 8px", borderRadius:"99px",
+            display: "inline-block", marginTop: "5px",
+            fontSize: "0.67rem", fontWeight: 700, textTransform: "uppercase",
+            letterSpacing: "0.06em", color: from,
+            background: `${from}22`, padding: "2px 8px", borderRadius: "99px",
           }}>{role}</span>
         </div>
       )}
@@ -82,32 +82,34 @@ function ChatMessage({ msg, isOwn }) {
   const [from, to] = PALETTE[msg.colorIndex % PALETTE.length];
   return (
     <div style={{
-      display:"flex", gap:"10px",
+      display: "flex", gap: "10px",
       flexDirection: isOwn ? "row-reverse" : "row",
-      alignItems:"flex-start", marginBottom:"1rem",
+      alignItems: "flex-start", marginBottom: "1rem",
     }}>
       {/* avatar */}
       <div style={{
-        width:34, height:34, borderRadius:"50%", flexShrink:0,
-        background:`linear-gradient(135deg,${from},${to})`,
-        display:"flex", alignItems:"center", justifyContent:"center",
-        fontSize:"0.78rem", fontWeight:800, color:"#fff",
-        border:"2px solid rgba(255,255,255,0.12)",
+        width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+        background: `linear-gradient(135deg,${from},${to})`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: "0.78rem", fontWeight: 800, color: "#fff",
+        border: "2px solid rgba(255,255,255,0.12)",
       }}>
         {msg.author.charAt(0).toUpperCase()}
       </div>
-      <div style={{ maxWidth:"72%", display:"flex", flexDirection:"column", gap:"4px",
-        alignItems: isOwn ? "flex-end" : "flex-start" }}>
-        <span style={{ fontSize:"0.7rem", color:"rgba(148,163,184,0.55)", fontWeight:600 }}>
+      <div style={{
+        maxWidth: "72%", display: "flex", flexDirection: "column", gap: "4px",
+        alignItems: isOwn ? "flex-end" : "flex-start"
+      }}>
+        <span style={{ fontSize: "0.7rem", color: "rgba(148,163,184,0.55)", fontWeight: 600 }}>
           {msg.author} · {msg.time}
         </span>
         <div style={{
-          padding:"10px 14px", borderRadius: isOwn ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
+          padding: "10px 14px", borderRadius: isOwn ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
           background: isOwn
             ? `linear-gradient(135deg,${from}cc,${to}bb)`
             : "rgba(255,255,255,0.05)",
           border: isOwn ? "none" : "1px solid rgba(255,255,255,0.07)",
-          fontSize:"0.88rem", lineHeight:1.5, color:"#f1f5f9",
+          fontSize: "0.88rem", lineHeight: 1.5, color: "#f1f5f9",
           boxShadow: isOwn ? `0 4px 14px ${from}44` : "none",
         }}>
           {msg.text}
@@ -121,12 +123,12 @@ function ChatMessage({ msg, isOwn }) {
    MAIN COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 const DEMO_MESSAGES = [
-  { id:1, author:"System", text:"Welcome to the Discussion Room! This is a shared space for your team.", time:"Just now", colorIndex:0, isSystem:true },
+  { id: 1, author: "System", text: "Welcome to the Discussion Room! This is a shared space for your team.", time: "Just now", colorIndex: 0, isSystem: true },
 ];
 
 export default function DiscussionRoom({ workspaceName, workspaceId, members = [], user }) {
-  const [open, setOpen]     = useState(false);
-  const [input, setInput]   = useState("");
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
   const [messages, setMessages] = useState(DEMO_MESSAGES);
   const [unread, setUnread] = useState(0);
   const socketRef = useRef(null);
@@ -143,6 +145,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
     socket.on("connect", () => {
       console.log("Connected to chat socket:", socket.id);
+      socket.emit('join-room', { workSpaceId: `room-${workspaceId}` });
       socket.emit("retrive-message", { workSpaceId: workspaceId });
     });
 
@@ -184,13 +187,13 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
     };
   }, [user?.id, open]);
 
-  const popupRef  = useRef(null);
+  const popupRef = useRef(null);
   const messagesRef = useRef(null);
-  const inputRef  = useRef(null);
+  const inputRef = useRef(null);
 
   // show up to 5 avatars in footer
   const visible = members.slice(0, 5);
-  const extra   = members.length - visible.length;
+  const extra = members.length - visible.length;
 
   // close on outside click
   useEffect(() => {
@@ -235,7 +238,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
     // However, if backend broadcasts back to EVERYONE including sender, we might get duplicates.
     // Standard practice is either local update or wait for broadcast.
     // The backend code provided uses `this.server.emit` which broadcasts to everyone.
-    
+
     /* 
     setMessages(prev => [...prev, {
       ...messageData,
@@ -274,56 +277,60 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
       {/* ── Popup ────────────────────────────────────────────────────────────── */}
       {open && (
         <div ref={popupRef} style={{
-          position:"fixed", bottom:"90px", right:"28px",
-          width:"min(420px, calc(100vw - 40px))",
-          height:"min(580px, calc(100vh - 130px))",
-          background:"linear-gradient(160deg,rgba(10,15,30,0.97) 0%,rgba(17,24,39,0.97) 100%)",
-          border:"1px solid rgba(255,255,255,0.09)",
-          borderRadius:"24px", zIndex:3000, display:"flex", flexDirection:"column",
-          boxShadow:"0 28px 72px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05)",
-          backdropFilter:"blur(28px)",
-          animation:"drPopup 0.26s cubic-bezier(0.34,1.56,0.64,1) forwards",
-          overflow:"hidden",
+          position: "fixed", bottom: "90px", right: "28px",
+          width: "min(420px, calc(100vw - 40px))",
+          height: "min(580px, calc(100vh - 130px))",
+          background: "linear-gradient(160deg,rgba(10,15,30,0.97) 0%,rgba(17,24,39,0.97) 100%)",
+          border: "1px solid rgba(255,255,255,0.09)",
+          borderRadius: "24px", zIndex: 3000, display: "flex", flexDirection: "column",
+          boxShadow: "0 28px 72px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05)",
+          backdropFilter: "blur(28px)",
+          animation: "drPopup 0.26s cubic-bezier(0.34,1.56,0.64,1) forwards",
+          overflow: "hidden",
         }}>
 
           {/* ── Header ─────────────────────────────────────────────────────── */}
           <div style={{
-            background:"linear-gradient(90deg,rgba(99,102,241,0.22) 0%,rgba(139,92,246,0.14) 100%)",
-            borderBottom:"1px solid rgba(255,255,255,0.07)",
-            padding:"1.1rem 1.4rem",
-            display:"flex", alignItems:"center", justifyContent:"space-between",
-            flexShrink:0,
+            background: "linear-gradient(90deg,rgba(99,102,241,0.22) 0%,rgba(139,92,246,0.14) 100%)",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            padding: "1.1rem 1.4rem",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            flexShrink: 0,
           }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <div style={{
-                width:40, height:40, borderRadius:"12px",
-                background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                boxShadow:"0 4px 14px rgba(99,102,241,0.45)",
+                width: 40, height: 40, borderRadius: "12px",
+                background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 14px rgba(99,102,241,0.45)",
               }}>
                 <MessageCircle size={20} color="#fff" />
               </div>
               <div>
-                <p style={{ margin:0, fontSize:"0.65rem", fontWeight:700,
-                  color:"rgba(148,163,184,0.65)", textTransform:"uppercase", letterSpacing:"0.1em" }}>
+                <p style={{
+                  margin: 0, fontSize: "0.65rem", fontWeight: 700,
+                  color: "rgba(148,163,184,0.65)", textTransform: "uppercase", letterSpacing: "0.1em"
+                }}>
                   Discussion Room for
                 </p>
-                <h3 style={{ margin:"2px 0 0", fontSize:"1.05rem", fontWeight:800,
-                  background:"linear-gradient(90deg,#818cf8,#a78bfa)",
-                  WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
-                  backgroundClip:"text", letterSpacing:"-0.01em" }}>
+                <h3 style={{
+                  margin: "2px 0 0", fontSize: "1.05rem", fontWeight: 800,
+                  background: "linear-gradient(90deg,#818cf8,#a78bfa)",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                  backgroundClip: "text", letterSpacing: "-0.01em"
+                }}>
                   {workspaceName || "Workspace"}
                 </h3>
               </div>
             </div>
             <button onClick={() => setOpen(false)} style={{
-              background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)",
-              borderRadius:"10px", color:"rgba(148,163,184,0.8)", cursor:"pointer",
-              width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center",
-              transition:"all 0.2s",
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "10px", color: "rgba(148,163,184,0.8)", cursor: "pointer",
+              width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "all 0.2s",
             }}
-              onMouseEnter={e => e.currentTarget.style.background="rgba(239,68,68,0.18)"}
-              onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.06)"}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.18)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
             >
               <X size={16} />
             </button>
@@ -331,25 +338,25 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
           {/* ── Online members strip ────────────────────────────────────────── */}
           <div style={{
-            padding:"0.75rem 1.4rem",
-            borderBottom:"1px solid rgba(255,255,255,0.05)",
-            display:"flex", alignItems:"center", gap:"10px", flexShrink:0,
-            background:"rgba(255,255,255,0.015)",
+            padding: "0.75rem 1.4rem",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            display: "flex", alignItems: "center", gap: "10px", flexShrink: 0,
+            background: "rgba(255,255,255,0.015)",
           }}>
             <Users size={13} color="rgba(148,163,184,0.5)" />
-            <span style={{ fontSize:"0.73rem", color:"rgba(148,163,184,0.5)", fontWeight:600, marginRight:4 }}>
+            <span style={{ fontSize: "0.73rem", color: "rgba(148,163,184,0.5)", fontWeight: 600, marginRight: 4 }}>
               {members.length} member{members.length !== 1 ? "s" : ""}
             </span>
-            <div style={{ display:"flex", gap:"6px", alignItems:"center" }}>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
               {visible.map((m, i) => (
                 <MemberAvatar key={m.id || i} member={m} index={i} size={30} />
               ))}
               {extra > 0 && (
                 <div style={{
-                  width:30, height:30, borderRadius:"50%",
-                  background:"rgba(255,255,255,0.07)", border:"2px solid rgba(255,255,255,0.1)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:"0.68rem", fontWeight:800, color:"rgba(148,163,184,0.75)",
+                  width: 30, height: 30, borderRadius: "50%",
+                  background: "rgba(255,255,255,0.07)", border: "2px solid rgba(255,255,255,0.1)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "0.68rem", fontWeight: 800, color: "rgba(148,163,184,0.75)",
                 }}>+{extra}</div>
               )}
             </div>
@@ -357,17 +364,17 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
           {/* ── Messages area ──────────────────────────────────────────────── */}
           <div ref={messagesRef} className="dr-messages" style={{
-            flex:1, overflowY:"auto", padding:"1.2rem 1.4rem",
+            flex: 1, overflowY: "auto", padding: "1.2rem 1.4rem",
           }}>
             {messages.map(msg => (
               msg.isSystem ? (
                 <div key={msg.id} style={{
-                  textAlign:"center", margin:"0.5rem 0 1.25rem",
-                  fontSize:"0.73rem", color:"rgba(148,163,184,0.45)", fontStyle:"italic",
+                  textAlign: "center", margin: "0.5rem 0 1.25rem",
+                  fontSize: "0.73rem", color: "rgba(148,163,184,0.45)", fontStyle: "italic",
                 }}>
                   <span style={{
-                    padding:"4px 14px", background:"rgba(255,255,255,0.03)",
-                    border:"1px solid rgba(255,255,255,0.06)", borderRadius:"99px",
+                    padding: "4px 14px", background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)", borderRadius: "99px",
                   }}>{msg.text}</span>
                 </div>
               ) : (
@@ -378,10 +385,10 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
           {/* ── Input bar ──────────────────────────────────────────────────── */}
           <form onSubmit={sendMessage} style={{
-            padding:"1rem 1.4rem",
-            borderTop:"1px solid rgba(255,255,255,0.07)",
-            display:"flex", gap:"10px", alignItems:"center",
-            background:"rgba(255,255,255,0.015)", flexShrink:0,
+            padding: "1rem 1.4rem",
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+            display: "flex", gap: "10px", alignItems: "center",
+            background: "rgba(255,255,255,0.015)", flexShrink: 0,
           }}>
             <input
               ref={inputRef}
@@ -389,21 +396,21 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
               onChange={e => setInput(e.target.value)}
               placeholder="Message the team…"
               style={{
-                flex:1, background:"rgba(255,255,255,0.05)",
-                border:"1px solid rgba(255,255,255,0.1)", borderRadius:"12px",
-                padding:"0.65rem 1rem", color:"#f1f5f9", fontSize:"0.88rem",
-                outline:"none", transition:"border 0.2s",
+                flex: 1, background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px",
+                padding: "0.65rem 1rem", color: "#f1f5f9", fontSize: "0.88rem",
+                outline: "none", transition: "border 0.2s",
               }}
-              onFocus={e => e.target.style.borderColor="rgba(99,102,241,0.5)"}
-              onBlur={e  => e.target.style.borderColor="rgba(255,255,255,0.1)"}
+              onFocus={e => e.target.style.borderColor = "rgba(99,102,241,0.5)"}
+              onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
             />
             <button type="submit" className="dr-send" style={{
-              width:40, height:40, borderRadius:"12px",
-              background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
-              border:"none", cursor:"pointer",
-              display:"flex", alignItems:"center", justifyContent:"center",
-              boxShadow:"0 4px 14px rgba(99,102,241,0.4)",
-              transition:"all 0.2s", flexShrink:0,
+              width: 40, height: 40, borderRadius: "12px",
+              background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+              border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 14px rgba(99,102,241,0.4)",
+              transition: "all 0.2s", flexShrink: 0,
             }}>
               <Send size={17} color="#fff" />
             </button>
@@ -417,26 +424,26 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
         onClick={() => { setOpen(v => !v); setUnread(0); }}
         aria-label="Open Discussion Room"
         style={{
-          position:"fixed", bottom:"28px", right:"28px", zIndex:2999,
-          display:"flex", alignItems:"center", gap:"10px",
-          padding:"0 20px 0 14px", height:"50px", borderRadius:"999px",
+          position: "fixed", bottom: "28px", right: "28px", zIndex: 2999,
+          display: "flex", alignItems: "center", gap: "10px",
+          padding: "0 20px 0 14px", height: "50px", borderRadius: "999px",
           background: open
             ? "linear-gradient(135deg,#6366f1,#8b5cf6)"
             : "linear-gradient(135deg,#4f46e5,#7c3aed)",
-          border:"none", cursor:"pointer", color:"#fff",
-          fontSize:"0.88rem", fontWeight:700, letterSpacing:"0.01em",
+          border: "none", cursor: "pointer", color: "#fff",
+          fontSize: "0.88rem", fontWeight: 700, letterSpacing: "0.01em",
           animation: open ? "none" : "drPulse 2.6s ease-in-out infinite",
-          boxShadow:"0 8px 26px rgba(99,102,241,0.4)",
-          whiteSpace:"nowrap",
+          boxShadow: "0 8px 26px rgba(99,102,241,0.4)",
+          whiteSpace: "nowrap",
         }}
       >
         {open ? <X size={20} /> : <MessageCircle size={20} />}
         <span>Discussion Room</span>
         {!open && unread > 0 && (
           <span style={{
-            background:"#ef4444", borderRadius:"99px",
-            padding:"1px 7px", fontSize:"0.72rem", fontWeight:800,
-            boxShadow:"0 2px 8px rgba(239,68,68,0.5)",
+            background: "#ef4444", borderRadius: "99px",
+            padding: "1px 7px", fontSize: "0.72rem", fontWeight: 800,
+            boxShadow: "0 2px 8px rgba(239,68,68,0.5)",
           }}>{unread}</span>
         )}
       </button>
