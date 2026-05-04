@@ -119,7 +119,7 @@ const VulnerabilityVisualizer = ({ data }) => {
   );
 
   return (
-    <div style={{ margin: '3rem 0', background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '2rem', border: '1px solid var(--border-light)' }}>
+    <div className="sidebar-section" style={{ margin: '3.5rem 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Vulnerability Intelligence Lab</h2>
@@ -473,24 +473,70 @@ export default function DashboardPage() {
     );
 
     return (
-      <div className="dashboard-container" style={{ maxWidth: '1600px', margin: '0 auto', padding: '2rem' }}>
+      <div className="dashboard-container" style={{ maxWidth: '1440px', margin: '0 auto', padding: '2.5rem' }}>
         <style>{`
-          .db-main-layout { display: flex; gap: 2.5rem; align-items: flex-start; transition: all 0.3s; }
-          .db-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
-          .db-sidebar { width: 400px; position: sticky; top: 2rem; display: flex; flexDirection: column; gap: 2rem; flex-shrink: 0; }
-          .db-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+          .db-main-layout { display: flex; gap: 3.5rem; align-items: flex-start; width: 100%; }
+          .db-content { flex: 1; min-width: 0; width: 100%; }
+          .db-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 3.5rem; width: 100%; }
+          .db-sidebar { width: 380px; position: sticky; top: 2.5rem; display: flex; flex-direction: column; gap: 2.5rem; flex-shrink: 0; }
+          .db-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3.5rem; width: 100%; }
+          
+          .stat-card {
+            background: linear-gradient(145deg, rgba(30,41,59,0.4) 0%, rgba(15,23,42,0.6) 100%);
+            padding: 2rem;
+            border-radius: 2rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            text-align: left;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+          }
+          .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; width: 60px; height: 60px;
+            background: radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 70%);
+          }
+          .stat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 20px -5px rgba(59, 130, 246, 0.2);
+          }
+          .stat-label { font-size: 0.7rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.8; }
+          .stat-value { font-size: 2.2rem; font-weight: 900; margin: 0; line-height: 1; }
 
-          @media (max-width: 1280px) {
+          .sidebar-section {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 2rem;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            width: 100%;
+          }
+
+          @media (max-width: 1400px) {
+            .db-main-layout { gap: 2.5rem; }
+            .db-sidebar { width: 340px; }
+          }
+          @media (max-width: 1200px) {
             .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
           }
           @media (max-width: 1024px) {
-            .db-main-layout { flex-direction: column; }
+            .db-main-layout { flex-direction: column; gap: 3rem; }
             .db-sidebar { width: 100%; position: static; }
+            .sidebar-section { padding: 2.5rem; }
+            .db-content { width: 100%; }
           }
           @media (max-width: 640px) {
             .db-stats-grid { grid-template-columns: 1fr; }
-            .db-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .dashboard-container { padding: 1rem !important; }
+            .db-header { flex-direction: column; align-items: flex-start; gap: 2rem; }
+            .dashboard-container { padding: 1.25rem !important; }
+            .stat-card { padding: 1.5rem; }
           }
         `}</style>
 
@@ -520,18 +566,20 @@ export default function DashboardPage() {
 
         <div className="db-main-layout">
           {/* Main Content Area */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="db-content">
             {/* Quick Stats */}
             <div className="db-stats-grid">
               {[
-                { label: 'Total CVEs', value: stats.total, color: '#3b82f6' },
-                { label: 'Critical Risk', value: stats.critical, color: '#ef4444' },
-                { label: 'High Priority', value: stats.high, color: '#f97316' },
-                { label: 'Avg Risk', value: stats.avgRisk, color: '#8b5cf6' }
+                { label: 'Total CVEs', value: stats.total, color: '#3b82f6', glow: '#3b82f633' },
+                { label: 'Critical Risk', value: stats.critical, color: '#ef4444', glow: '#ef444433' },
+                { label: 'High Priority', value: stats.high, color: '#f97316', glow: '#f9731633' },
+                { label: 'Avg Risk', value: stats.avgRisk, color: '#8b5cf6', glow: '#8b5cf633' }
               ].map((stat, i) => (
-                <div key={i} style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1.5rem', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>{stat.label}</p>
-                  <p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: stat.color }}>{stat.value}</p>
+                <div key={i} className="stat-card">
+                  <span className="stat-label">{stat.label}</span>
+                  <h4 className="stat-value" style={{ color: stat.color, textShadow: `0 0 25px ${stat.glow}` }}>
+                    {stat.value}
+                  </h4>
                 </div>
               ))}
             </div>
@@ -574,10 +622,10 @@ export default function DashboardPage() {
                 <VulnerabilityVisualizer data={cveData} />
 
                 <section>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Vulnerability Grid</h2>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', padding: '6px 14px', borderRadius: '99px' }}>
-                      Surface Area: {cveData.length} Nodes
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Vulnerability Grid</h2>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      {cveData.length} Nodes detected
                     </span>
                   </div>
 
@@ -643,14 +691,16 @@ export default function DashboardPage() {
           {/* Right Sidebar */}
           <div className="db-sidebar">
             {/* Team Section */}
-            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '2rem', border: '1px solid var(--border-light)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <div className="sidebar-section">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Users size={22} color="var(--primary-accent)" />
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Workspace Team</h3>
+                  <div style={{ background: 'rgba(59,130,246,0.1)', padding: '10px', borderRadius: '12px' }}>
+                    <Users size={20} color="var(--primary-accent)" />
+                  </div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Collaborators</h3>
                 </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                  {selectedWorkspace.members?.length}/5 active
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  {selectedWorkspace.members?.length}/5
                 </span>
               </div>
 
@@ -714,10 +764,12 @@ export default function DashboardPage() {
             </div>
 
             {/* Research History Section */}
-            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '2rem', border: '1px solid var(--border-light)', flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
-                <History size={22} color="var(--primary-accent)" />
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Snapshot History</h3>
+            <div className="sidebar-section" style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem' }}>
+                <div style={{ background: 'rgba(139,92,246,0.1)', padding: '10px', borderRadius: '12px' }}>
+                  <History size={20} color="#8b5cf6" />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Intelligence Log</h3>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '8px' }}>
