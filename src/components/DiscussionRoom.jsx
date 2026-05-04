@@ -143,6 +143,22 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
     socket.on("connect", () => {
       console.log("Connected to chat socket:", socket.id);
+      // Retrieve history
+      socket.emit("retrive-message", { workSpaceId: workspaceId });
+    });
+
+    socket.on("all-messages", (history) => {
+      if (Array.isArray(history)) {
+        const mapped = history.map((m) => ({
+          id: m.id,
+          author: m.user?.name || "Member",
+          text: m.message,
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          colorIndex: 0,
+          isOwn: m.userId === user?.id,
+        }));
+        setMessages([DEMO_MESSAGES[0], ...mapped]);
+      }
     });
 
     socket.on("received-message", (data) => {
