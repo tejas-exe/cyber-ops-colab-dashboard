@@ -144,8 +144,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("Connected to chat socket:", socket.id);
-      socket.emit('join-room', { workSpaceId: `room-${workspaceId}` });
+      socket.emit('join-room', { workSpaceId: `${workspaceId}` });
       socket.emit("retrive-message", { workSpaceId: workspaceId });
     });
 
@@ -183,6 +182,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
     });
 
     return () => {
+      socket.emit('leave-room', { workSpaceId: workspaceId });
       socket.disconnect();
     };
   }, [user?.id, open]);
