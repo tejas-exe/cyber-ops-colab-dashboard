@@ -143,7 +143,6 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
     socket.on("connect", () => {
       console.log("Connected to chat socket:", socket.id);
-      // Retrieve history
       socket.emit("retrive-message", { workSpaceId: workspaceId });
     });
 

@@ -301,6 +301,13 @@ export default function DashboardPage() {
   const handleInviteMember = async (e) => {
     e.preventDefault();
     if (!inviteUserId.trim()) return;
+    
+    // Check limit
+    if (selectedWorkspace.members?.length >= 5) {
+      alert("A workspace can have a maximum of 5 members.");
+      return;
+    }
+
     try {
       await inviteMember.mutateAsync(inviteUserId.trim());
       setInviteUserId("");
@@ -467,8 +474,28 @@ export default function DashboardPage() {
 
     return (
       <div className="dashboard-container" style={{ maxWidth: '1600px', margin: '0 auto', padding: '2rem' }}>
+        <style>{`
+          .db-main-layout { display: flex; gap: 2.5rem; align-items: flex-start; transition: all 0.3s; }
+          .db-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
+          .db-sidebar { width: 400px; position: sticky; top: 2rem; display: flex; flexDirection: column; gap: 2rem; flex-shrink: 0; }
+          .db-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+
+          @media (max-width: 1280px) {
+            .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
+          }
+          @media (max-width: 1024px) {
+            .db-main-layout { flex-direction: column; }
+            .db-sidebar { width: 100%; position: static; }
+          }
+          @media (max-width: 640px) {
+            .db-stats-grid { grid-template-columns: 1fr; }
+            .db-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .dashboard-container { padding: 1rem !important; }
+          }
+        `}</style>
+
         {/* Top Header Bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+        <div className="db-header">
           <div>
             <button
               onClick={() => { navigate("/dashboard"); setCveData([]); }}
@@ -491,11 +518,11 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'flex-start' }}>
+        <div className="db-main-layout">
           {/* Main Content Area */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Quick Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div className="db-stats-grid">
               {[
                 { label: 'Total CVEs', value: stats.total, color: '#3b82f6' },
                 { label: 'Critical Risk', value: stats.critical, color: '#ef4444' },
@@ -614,7 +641,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Right Sidebar */}
-          <div style={{ width: '400px', position: 'sticky', top: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div className="db-sidebar">
             {/* Team Section */}
             <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '2rem', border: '1px solid var(--border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
@@ -622,7 +649,9 @@ export default function DashboardPage() {
                   <Users size={22} color="var(--primary-accent)" />
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Workspace Team</h3>
                 </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>{selectedWorkspace.members?.length} active</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  {selectedWorkspace.members?.length}/5 active
+                </span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
@@ -650,11 +679,33 @@ export default function DashboardPage() {
                 <form onSubmit={handleInviteMember} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
                   <div style={{ position: 'relative' }}>
                     <input
-                      type="text" placeholder="Invite Researcher ID..." value={inviteUserId}
+                      type="text" 
+                      placeholder={selectedWorkspace.members?.length >= 5 ? "Workspace Full (Max 5)" : "Invite Researcher ID..."} 
+                      value={inviteUserId}
+                      disabled={selectedWorkspace.members?.length >= 5}
                       onChange={(e) => setInviteUserId(e.target.value)}
-                      className="glass-input" style={{ width: '100%', padding: '1rem 1.25rem', fontSize: '0.9rem' }}
+                      className="glass-input" style={{ 
+                        width: '100%', 
+                        padding: '1rem 1.25rem', 
+                        fontSize: '0.9rem',
+                        opacity: selectedWorkspace.members?.length >= 5 ? 0.6 : 1,
+                        cursor: selectedWorkspace.members?.length >= 5 ? 'not-allowed' : 'text'
+                      }}
                     />
-                    <button type="submit" className="btn-glow" style={{ position: 'absolute', right: '6px', top: '6px', bottom: '6px', padding: '0 15px', borderRadius: '10px' }} disabled={inviteMember.isPending}>
+                    <button 
+                      type="submit" 
+                      className="btn-glow" 
+                      style={{ 
+                        position: 'absolute', 
+                        right: '6px', 
+                        top: '6px', 
+                        bottom: '6px', 
+                        padding: '0 15px', 
+                        borderRadius: '10px',
+                        display: selectedWorkspace.members?.length >= 5 ? 'none' : 'flex'
+                      }} 
+                      disabled={inviteMember.isPending}
+                    >
                       {inviteMember.isPending ? <Loader2 className="spinner" size={16} /> : <UserPlus size={18} />}
                     </button>
                   </div>
