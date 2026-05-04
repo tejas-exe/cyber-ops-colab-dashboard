@@ -711,7 +711,9 @@ export default function DashboardPage() {
       {workspaceId && selectedWorkspace && (
         <DiscussionRoom
           workspaceName={selectedWorkspace.name}
+          workspaceId={workspaceId}
           members={selectedWorkspace.members || []}
+          user={user}
         />
       )}
     </div>

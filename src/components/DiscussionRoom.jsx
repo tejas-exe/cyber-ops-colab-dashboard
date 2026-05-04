@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Users, Send, Smile } from "lucide-react";
+import { io } from "socket.io-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    AVATAR + TOOLTIP
@@ -123,11 +124,50 @@ const DEMO_MESSAGES = [
   { id:1, author:"System", text:"Welcome to the Discussion Room! This is a shared space for your team.", time:"Just now", colorIndex:0, isSystem:true },
 ];
 
-export default function DiscussionRoom({ workspaceName, members = [] }) {
+export default function DiscussionRoom({ workspaceName, workspaceId, members = [], user }) {
   const [open, setOpen]     = useState(false);
   const [input, setInput]   = useState("");
   const [messages, setMessages] = useState(DEMO_MESSAGES);
   const [unread, setUnread] = useState(0);
+  const socketRef = useRef(null);
+
+  // Initialize Socket.io
+  useEffect(() => {
+    const socketUrl = import.meta.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:3000";
+    const socket = io(socketUrl, {
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("Connected to chat socket:", socket.id);
+    });
+
+    socket.on("received-message", (data) => {
+      // If the backend returns an empty object, we might need to handle it.
+      // But we expect { text, author, authorId, time, colorIndex }
+      if (data && data.text) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + Math.random(),
+            author: data.author || "Guest",
+            text: data.text,
+            time: data.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            colorIndex: data.colorIndex || 0,
+            isOwn: data.authorId === user?.id,
+          },
+        ]);
+        if (!open) setUnread((u) => u + 1);
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user?.id, open]);
 
   const popupRef  = useRef(null);
   const messagesRef = useRef(null);
@@ -157,13 +197,39 @@ export default function DiscussionRoom({ workspaceName, members = [] }) {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
+
     const now = new Date();
-    const time = now.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const authorName = user?.name || "You";
+
+    const messageData = {
+      text,
+      author: authorName,
+      authorId: user?.id,
+      workSpaceId: workspaceId,
+      time,
+      colorIndex: 0,
+    };
+
+    // Emit to backend
+    if (socketRef.current) {
+      socketRef.current.emit("sent-message", messageData);
+    }
+
+    // Local update (optional if backend broadcasts back, but good for UX)
+    // However, if backend broadcasts back to EVERYONE including sender, we might get duplicates.
+    // Standard practice is either local update or wait for broadcast.
+    // The backend code provided uses `this.server.emit` which broadcasts to everyone.
+    
+    /* 
     setMessages(prev => [...prev, {
-      id: Date.now(), author:"You", text, time, colorIndex:0, isOwn:true,
-    }]);
+      ...messageData,
+      id: Date.now(),
+      isOwn: true,
+    }]); 
+    */
+
     setInput("");
-    if (!open) setUnread(u => u + 1);
     setTimeout(() => inputRef.current?.focus(), 50);
   }
 
