@@ -18,7 +18,7 @@ export default function Navbar() {
     try {
       setIsCopying(true);
       const token = localStorage.getItem('accessToken');
-      const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/$/, "");
+      const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "");
       
       const res = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -42,7 +42,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/$/, "");
+      const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "");
       await fetch(`${API_BASE_URL}/auth/logout`, { 
         method: 'POST',
         credentials: 'include' 

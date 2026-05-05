@@ -2,7 +2,7 @@ import React from 'react';
 import { ShieldAlert } from 'lucide-react';
 import '../index.css';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "");
 
 export default function LoginPage() {
   const handleGoogleLogin = () => {

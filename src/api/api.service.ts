@@ -8,7 +8,7 @@ class ApiService {
     private refreshClient: AxiosInstance;
     private getToken?: GetTokenFn;
 
-    constructor(baseURL = env.VITE_API_BASE_URL || "", timeout = 10_000, headers = {}, withCredentials: boolean = true,) {
+    constructor(baseURL = env.VITE_API_BASE_URL, timeout = 10_000, headers = {}, withCredentials: boolean = true,) {
 
         this.client = axios.create({
             baseURL,
