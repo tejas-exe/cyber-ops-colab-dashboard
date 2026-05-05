@@ -1,0 +1,384 @@
+import React, { useEffect, useRef, useState } from "react";
+import { X, Video, VideoOff, Mic, MicOff, ScreenShare, PhoneOff, Users, Settings, Maximize2 } from "lucide-react";
+import VcWrapper from "./VcWrapper";
+import { socket } from "../sockets/socket";
+
+const iceServers = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun.l.google.com:5349" },
+    { urls: "stun:stun1.l.google.com:3478" },
+    { urls: "stun:stun1.l.google.com:5349" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:5349" },
+    { urls: "stun:stun3.l.google.com:3478" },
+    { urls: "stun:stun3.l.google.com:5349" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:5349" }
+];
+
+const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
+    //  to keep the track of stram and who is in it
+    const [remoteStreams, setRemoteStreams] = useState([]);
+
+    const localVideoRef = useRef(null);       // ref to our own <video> element
+    const localStreamRef = useRef(null);      // our camera/mic stream
+    const peerConnections = useRef({});       // { socketId: RTCPeerConnection }
+
+    useEffect(() => {
+        let stream;
+        const start = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+            } catch (err) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: false,
+                        audio: true
+                    });
+
+                } catch (error) {
+                    console.log("ERROR:", error);
+
+                }
+            }
+
+            if (stream) {
+                localStreamRef.current = stream;
+                if (localVideoRef.current) {
+                    localVideoRef.current.srcObject = stream;
+                }
+            }
+
+            socket.emit("video-join", { workSpaceId: workspaceId, userId });
+        };
+        start();
+
+        return () => {
+            stream?.getTracks().forEach(track => track.stop());
+        };
+
+    }, [])
+
+
+    useEffect(() => {
+
+        const creatPeerConnection = (remoteSocketId) => {
+            // set up your own pear on server 
+            const pc = new RTCPeerConnection({ iceServers: iceServers })
+            // when pear is redy send this detail to the user 
+
+            pc.onicecandidate = ({ candidate }) => {
+                socket.emit("video-ice-candidate", {
+                    to: remoteSocketId,
+                    candidate,
+                    workSpaceId: workspaceId
+                });
+            }
+
+            //  set others streem on to you device 
+
+            pc.ontrack = ({ streams }) => {
+                setRemoteStreams((prev) => {
+                    const exists = prev.find(r => r.socketId === remoteSocketId);
+                    if (exists) {
+                        return prev.map((item) => (item.socketId === remoteSocketId ? { ...r, stream: streams[0] }
+                            : r))
+                    }
+                    return [...prev, { socketId: remoteSocketId, stream: streams[0] }];
+                })
+            }
+
+
+            localStreamRef.current?.getTracks().forEach(track => {
+                pc.addTrack(track, localStreamRef.current);
+            });
+            peerConnections.current[remoteSocketId] = pc;
+            return pc;
+
+        }
+
+        socket.on("video-existing-peers", async (existingUsers) => {
+            for (let i = 0; i < existingUsers.length; i++) {
+
+                const pc = creatPeerConnection(existingUsers[i].socketId);
+
+                console.log("existingUsers[i].socketId = ", "Index = ", i, "=", existingUsers[i].socketId)
+
+                const offer = await pc.createOffer();
+
+                await pc.setLocalDescription(offer);
+
+                socket.emit("video-offer", {
+                    to: existingUsers[i].socketId,
+                    offer,
+                    workSpaceId: workspaceId,
+                    from: socket.id
+                });
+            }
+        })
+
+        socket.on("video-offer", async (payload) => {
+            const { from, offer, to } = payload;
+            if (to !== socket.id) return;
+
+            let pc = peerConnections.current[from];
+            if (!pc) pc = creatPeerConnection(from);
+
+            try {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+
+                socket.emit("video-answer", {
+                    to: from,
+                    answer,
+                    workSpaceId: workspaceId,
+                    from: socket.id
+                });
+            } catch (err) {
+                console.error("Error handling video-offer:", err);
+            }
+        })
+
+
+        socket.on("video-answer", async ({ from, answer }) => {
+            const pc = peerConnections.current[from];
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            }
+        });
+
+        socket.on("video-user-joined", ({ socketId }) => {
+            creatPeerConnection(socketId);
+            // just create the connection object and wait
+            // their offer will arrive via the video-offer event below
+        });
+
+        // ── we received an ICE candidate from someone ──
+        socket.on("video-ice-candidate", async ({ from, candidate }) => {
+            const pc = peerConnections.current[from];
+            if (pc) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+        });
+
+
+        socket.on("video-leave", ({ socketId }) => {
+            peerConnections.current[socketId]?.close();
+            delete peerConnections.current[socketId];
+            setRemoteStreams(prev => prev.filter(r => r.socketId !== socketId));
+        });
+
+        return () => {
+            socket.emit("video-leave", { workSpaceId: workspaceId });
+            socket.off("video-existing-peers");
+            socket.off("video-join");
+            socket.off("video-offer");
+            socket.off("video-answer");
+            socket.off("video-ice-candidate");
+            socket.off("video-user-left");
+
+            Object.values(peerConnections.current).forEach(pc => pc.close());
+            peerConnections.current = {};
+        };
+
+    }, [workspaceId]);
+
+
+    const [isVideoMuted, setIsVideoMuted] = useState(false);
+    const [isAudioMuted, setIsAudioMuted] = useState(false);
+
+    const toggleVideo = () => {
+        if (localStreamRef.current) {
+            localStreamRef.current.getVideoTracks().forEach(track => {
+                track.enabled = isVideoMuted;
+            });
+            setIsVideoMuted(!isVideoMuted);
+        }
+    };
+
+    const toggleAudio = () => {
+        if (localStreamRef.current) {
+            localStreamRef.current.getAudioTracks().forEach(track => {
+                track.enabled = isAudioMuted;
+            });
+            setIsAudioMuted(!isAudioMuted);
+        }
+    };
+
+    return (
+        <VcWrapper workspaceName={workspaceName} onClose={onClose}>
+            <div style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: "24px",
+                padding: "24px",
+                height: "100%",
+                overflow: "hidden",
+                position: "relative"
+            }}>
+                <div style={{
+                    flex: 1,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                    gap: "20px",
+                    overflowY: "auto",
+                    paddingBottom: "100px", // space for floating controls
+                    scrollbarWidth: "none"
+                }}>
+                    {/* Local Video Area */}
+                    <div style={{
+                        position: "relative",
+                        borderRadius: "24px",
+                        overflow: "hidden",
+                        background: "rgba(15,23,42,0.6)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+                        aspectRatio: "16/9"
+                    }}>
+                        <video
+                            ref={localVideoRef}
+                            autoPlay
+                            muted
+                            playsInline
+                            style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                transform: "scaleX(-1)",
+                                opacity: isVideoMuted ? 0 : 1,
+                                transition: "opacity 0.3s ease"
+                            }}
+                        />
+                        {isVideoMuted && (
+                            <div style={{
+                                position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                                background: "#1e293b", color: "#64748b"
+                            }}>
+                                <VideoOff size={48} />
+                            </div>
+                        )}
+                        <div style={{
+                            position: "absolute", bottom: "20px", left: "20px",
+                            padding: "8px 16px", background: "rgba(0,0,0,0.6)",
+                            backdropFilter: "blur(12px)", borderRadius: "12px",
+                            color: "#fff", fontSize: "0.85rem", fontWeight: 600,
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            display: "flex", alignItems: "center", gap: "8px"
+                        }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} />
+                            You (Host)
+                        </div>
+                    </div>
+
+                    {/* Remote Streams */}
+                    {remoteStreams.map((rs) => (
+                        <RemoteVideo key={rs.socketId} stream={rs.stream} socketId={rs.socketId} />
+                    ))}
+                </div>
+
+                {/* Floating Controls Overlay */}
+                <div style={{
+                    position: "absolute",
+                    bottom: "32px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "20px",
+                    padding: "16px 32px",
+                    background: "rgba(15,23,42,0.8)",
+                    backdropFilter: "blur(20px)",
+                    borderRadius: "24px",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
+                    zIndex: 100
+                }}>
+                    <button
+                        onClick={toggleAudio}
+                        style={{
+                            width: "48px", height: "48px", borderRadius: "16px",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: isAudioMuted ? "#ef4444" : "rgba(255,255,255,0.05)",
+                            color: "white", border: "none", cursor: "pointer", transition: "all 0.2s ease"
+                        }}
+                    >
+                        {isAudioMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                    </button>
+
+                    <button
+                        onClick={toggleVideo}
+                        style={{
+                            width: "48px", height: "48px", borderRadius: "16px",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: isVideoMuted ? "#ef4444" : "rgba(255,255,255,0.05)",
+                            color: "white", border: "none", cursor: "pointer", transition: "all 0.2s ease"
+                        }}
+                    >
+                        {isVideoMuted ? <VideoOff size={20} /> : <Video size={20} />}
+                    </button>
+
+                    <div style={{ width: "1px", height: "24px", background: "rgba(255,255,255,0.1)" }} />
+
+                    <button
+                        onClick={onClose}
+                        style={{
+                            padding: "0 24px", height: "48px", borderRadius: "16px",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            gap: "8px", background: "#f43f5e", color: "white",
+                            border: "none", cursor: "pointer", fontWeight: 600, transition: "all 0.2s ease"
+                        }}
+                    >
+                        <PhoneOff size={20} />
+                        End Call
+                    </button>
+                </div>
+            </div>
+        </VcWrapper>
+    );
+};
+
+const RemoteVideo = ({ stream, socketId }) => {
+    const videoRef = useRef(null);
+
+    useEffect(() => {
+        if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [stream]);
+
+    return (
+        <div style={{
+            position: "relative",
+            borderRadius: "24px",
+            overflow: "hidden",
+            background: "rgba(15,23,42,0.6)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+            aspectRatio: "16/9"
+        }}>
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+            <div style={{
+                position: "absolute", bottom: "20px", left: "20px",
+                padding: "8px 16px", background: "rgba(0,0,0,0.6)",
+                backdropFilter: "blur(12px)", borderRadius: "12px",
+                color: "#fff", fontSize: "0.85rem", fontWeight: 600,
+                border: "1px solid rgba(255,255,255,0.1)",
+                display: "flex", alignItems: "center", gap: "8px"
+            }}>
+                Participant
+            </div>
+        </div>
+    );
+};
+
+export default VideoRoom;

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Users, Send, Smile } from "lucide-react";
-import { io } from "socket.io-client";
+import { MessageCircle, X, Users, Send, Smile, Video } from "lucide-react";
+import VideoRoom from "./VideoCallRoom";
+import { socket } from "../sockets/socket";
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    AVATAR + TOOLTIP
@@ -130,25 +132,22 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState(DEMO_MESSAGES);
+  const [videoCallOpen, setVideoCallOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const socketRef = useRef(null);
 
-  // Initialize Socket.io
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:3000";
-    const socket = io(socketUrl, {
-      withCredentials: true,
-      transports: ["websocket", "polling"],
-    });
 
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
+    const onConnection = () => {
       socket.emit('join-room', { workSpaceId: `${workspaceId}` });
       socket.emit("retrive-message", { workSpaceId: workspaceId });
-    });
+    }
 
-    socket.on("all-messages", (history) => {
+    if (socket.connected) {
+      onConnection()
+    }
+    socket.on("connect", onConnection);
+
+    const handleAllMessages = (history) => {
       if (Array.isArray(history)) {
         const mapped = history.map((m) => ({
           id: m.id,
@@ -160,11 +159,9 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
         }));
         setMessages([DEMO_MESSAGES[0], ...mapped]);
       }
-    });
+    };
 
-    socket.on("received-message", (data) => {
-      // If the backend returns an empty object, we might need to handle it.
-      // But we expect { text, author, authorId, time, colorIndex }
+    const handleReceived = (data) => {
       if (data && data.text) {
         setMessages((prev) => [
           ...prev,
@@ -179,11 +176,16 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
         ]);
         if (!open) setUnread((u) => u + 1);
       }
-    });
+    };
+
+    socket.on("all-messages", handleAllMessages);
+    socket.on("received-message", handleReceived);
 
     return () => {
+      socket.off("connect", onConnection);
+      socket.off("all-messages", handleAllMessages);
+      socket.off("received-message", handleReceived);
       socket.emit('leave-room', { workSpaceId: workspaceId });
-      socket.disconnect();
     };
   }, [user?.id, open]);
 
@@ -229,10 +231,8 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
       colorIndex: 0,
     };
 
-    // Emit to backend
-    if (socketRef.current) {
-      socketRef.current.emit("sent-message", messageData);
-    }
+    socket.emit("sent-message", messageData);
+
 
     // Local update (optional if backend broadcasts back, but good for UX)
     // However, if backend broadcasts back to EVERYONE including sender, we might get duplicates.
@@ -323,17 +323,51 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
                 </h3>
               </div>
             </div>
-            <button onClick={() => setOpen(false)} style={{
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "10px", color: "rgba(148,163,184,0.8)", cursor: "pointer",
-              width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "all 0.2s",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.18)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
-            >
-              <X size={16} />
-            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                onClick={() => setVideoCallOpen(true)}
+                className="dr-video-btn"
+                style={{
+                  background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "#fff",
+                  padding: "6px 14px",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(99,102,241,0.4)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = "none";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(99,102,241,0.3)";
+                }}
+              >
+                <Video size={14} />
+                Video Discussion
+              </button>
+
+              <button onClick={() => setOpen(false)} style={{
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "10px", color: "rgba(148,163,184,0.8)", cursor: "pointer",
+                width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.18)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           {/* ── Online members strip ────────────────────────────────────────── */}
@@ -370,11 +404,19 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
               msg.isSystem ? (
                 <div key={msg.id} style={{
                   textAlign: "center", margin: "0.5rem 0 1.25rem",
-                  fontSize: "0.73rem", color: "rgba(148,163,184,0.45)", fontStyle: "italic",
                 }}>
                   <span style={{
-                    padding: "4px 14px", background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.06)", borderRadius: "99px",
+                    display: "inline-block",
+                    maxWidth: "85%",
+                    padding: "6px 16px",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "14px",
+                    fontSize: "0.73rem",
+                    color: "rgba(148,163,184,0.6)",
+                    fontStyle: "italic",
+                    lineHeight: "1.5",
+                    wordBreak: "break-word"
                   }}>{msg.text}</span>
                 </div>
               ) : (
@@ -416,6 +458,16 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
             </button>
           </form>
         </div>
+      )}
+
+      {/* ── Video Call Popup ────────────────────────────────────────────────── */}
+      {videoCallOpen && (
+        <VideoRoom
+          workspaceName={workspaceName}
+          onClose={() => setVideoCallOpen(false)}
+          workspaceId={workspaceId}
+          userId={user?.id}
+        />
       )}
 
       {/* ── FAB ─────────────────────────────────────────────────────────────── */}
