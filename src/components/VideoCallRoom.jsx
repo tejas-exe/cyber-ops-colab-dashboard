@@ -84,8 +84,8 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
                 setRemoteStreams((prev) => {
                     const exists = prev.find(r => r.socketId === remoteSocketId);
                     if (exists) {
-                        return prev.map((item) => (item.socketId === remoteSocketId ? { ...r, stream: streams[0] }
-                            : r))
+                        return prev.map((item) => (item.socketId === remoteSocketId ? { ...item, stream: streams[0] }
+                            : item))
                     }
                     return [...prev, { socketId: remoteSocketId, stream: streams[0] }];
                 })
@@ -101,32 +101,36 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
         }
 
         socket.on("video-existing-peers", async (existingUsers) => {
-            setUserOncall(existingUsers.length + 1)
-            for (let i = 0; i < existingUsers.length; i++) {
+            const peersToConnect = existingUsers.filter(u => u.socketId !== socket.id);
+            setUserOncall(peersToConnect.length + 1)
+            for (let i = 0; i < peersToConnect.length; i++) {
+                const pc = creatPeerConnection(peersToConnect[i].socketId);
 
-                const pc = creatPeerConnection(existingUsers[i].socketId);
+                try {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
 
-                console.log("existingUsers[i].socketId = ", "Index = ", i, "=", existingUsers[i].socketId)
-
-                const offer = await pc.createOffer();
-
-                await pc.setLocalDescription(offer);
-
-                socket.emit("video-offer", {
-                    to: existingUsers[i].socketId,
-                    offer,
-                    workSpaceId: workspaceId,
-                    from: socket.id
-                });
+                    socket.emit("video-offer", {
+                        to: peersToConnect[i].socketId,
+                        offer,
+                        workSpaceId: workspaceId,
+                        from: socket.id
+                    });
+                } catch (err) {
+                    console.error("Error creating offer:", err);
+                }
             }
         })
 
         socket.on("video-offer", async (payload) => {
             const { from, offer, to } = payload;
-            if (to !== socket.id) return;
+            if (to !== socket.id || from === socket.id) return;
 
             let pc = peerConnections.current[from];
             if (!pc) pc = creatPeerConnection(from);
+
+            // If we're already in a signaling state, ignore duplicate offers
+            if (pc.signalingState !== "stable") return;
 
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -147,8 +151,12 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
 
         socket.on("video-answer", async ({ from, answer }) => {
             const pc = peerConnections.current[from];
-            if (pc) {
-                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            if (pc && pc.signalingState === "have-local-offer") {
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                } catch (err) {
+                    console.error("Error setting remote answer:", err);
+                }
             }
         });
 
@@ -162,8 +170,12 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
         // ── we received an ICE candidate from someone ──
         socket.on("video-ice-candidate", async ({ from, candidate }) => {
             const pc = peerConnections.current[from];
-            if (pc) {
-                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            if (pc && candidate) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) {
+                    console.error("Error adding ICE candidate:", err);
+                }
             }
         });
 
