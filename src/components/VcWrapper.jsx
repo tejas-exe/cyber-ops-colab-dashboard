@@ -1,6 +1,6 @@
 import { Video, X } from "lucide-react";
 
-const VcWrapper = ({ children, workspaceName ,onClose }) => {
+const VcWrapper = ({ children, workspaceName ,onClose , participents }) => {
     return (
 
         <div style={{
@@ -37,19 +37,19 @@ const VcWrapper = ({ children, workspaceName ,onClose }) => {
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
                             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 10px #10b981" }} />
                             <p style={{ margin: 0, fontSize: "0.8rem", color: "rgba(148,163,184,0.7)", fontWeight: 500 }}>
-                                {workspaceName} • 12 Active Participants
+                                {workspaceName} • {participents} Active Participants
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{
+                    {/* <div style={{
                         padding: "8px 16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)",
                         border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: "0.85rem", fontWeight: 600
                     }}>
                         00:42:15
-                    </div>
+                    </div> */}
                     <button
                         onClick={onClose}
                         style={{

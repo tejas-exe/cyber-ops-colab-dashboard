@@ -19,7 +19,7 @@ const iceServers = [
 const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
     //  to keep the track of stram and who is in it
     const [remoteStreams, setRemoteStreams] = useState([]);
-
+    const [userOnCall, setUserOncall] = useState(1)
     const localVideoRef = useRef(null);       // ref to our own <video> element
     const localStreamRef = useRef(null);      // our camera/mic stream
     const peerConnections = useRef({});       // { socketId: RTCPeerConnection }
@@ -101,6 +101,7 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
         }
 
         socket.on("video-existing-peers", async (existingUsers) => {
+            setUserOncall(existingUsers.length + 1)
             for (let i = 0; i < existingUsers.length; i++) {
 
                 const pc = creatPeerConnection(existingUsers[i].socketId);
@@ -151,7 +152,8 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
             }
         });
 
-        socket.on("video-user-joined", ({ socketId }) => {
+        socket.on("video-peer-joined", ({ socketId }) => {
+            setUserOncall(prev => prev + 1);
             creatPeerConnection(socketId);
             // just create the connection object and wait
             // their offer will arrive via the video-offer event below
@@ -166,7 +168,8 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
         });
 
 
-        socket.on("video-leave", ({ socketId }) => {
+        socket.on("video-peer-left", ({ socketId }) => {
+            setUserOncall(prev => Math.max(1, prev - 1));
             peerConnections.current[socketId]?.close();
             delete peerConnections.current[socketId];
             setRemoteStreams(prev => prev.filter(r => r.socketId !== socketId));
@@ -175,12 +178,12 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
         return () => {
             socket.emit("video-leave", { workSpaceId: workspaceId });
             socket.off("video-existing-peers");
-            socket.off("video-join");
+            socket.off("video-peer-joined");
             socket.off("video-offer");
             socket.off("video-answer");
             socket.off("video-ice-candidate");
-            socket.off("video-user-left");
-
+            socket.off("video-peer-left");
+            setUserOncall(1)
             Object.values(peerConnections.current).forEach(pc => pc.close());
             peerConnections.current = {};
         };
@@ -210,7 +213,7 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
     };
 
     return (
-        <VcWrapper workspaceName={workspaceName} onClose={onClose}>
+        <VcWrapper workspaceName={workspaceName} onClose={onClose} participents={userOnCall}>
             <div style={{
                 flex: 1,
                 display: "flex",
