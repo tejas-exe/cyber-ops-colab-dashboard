@@ -3,7 +3,7 @@ import { Video, X } from "lucide-react";
 const VcWrapper = ({ children, workspaceName ,onClose , participents }) => {
     return (
 
-        <div style={{
+        <div className="vc-wrapper" style={{
             position: "fixed", top: "4vh", left: "4vw",
             width: "92vw", height: "92vh",
             background: "linear-gradient(165deg, #0f172a 0%, #020617 100%)",
@@ -14,7 +14,31 @@ const VcWrapper = ({ children, workspaceName ,onClose , participents }) => {
             animation: "drPopup 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards",
             overflow: "hidden",
         }}>
-            <div style={{
+            <style>{`
+              @media (max-width: 768px) {
+                .vc-wrapper {
+                  top: 0 !important;
+                  left: 0 !important;
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  border-radius: 0 !important;
+                }
+                .vc-header {
+                  padding: 0.8rem 0.85rem !important;
+                }
+                .vc-header-title {
+                  font-size: 1rem !important;
+                }
+                .vc-header-subtitle {
+                  font-size: 0.68rem !important;
+                }
+                .vc-body {
+                  padding: 0.75rem !important;
+                  gap: 0.75rem !important;
+                }
+              }
+            `}</style>
+            <div className="vc-header" style={{
                 padding: "1.25rem 2.5rem",
                 borderBottom: "1px solid rgba(255,255,255,0.06)",
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -30,13 +54,13 @@ const VcWrapper = ({ children, workspaceName ,onClose , participents }) => {
                         <Video size={24} color="#fff" />
                     </div>
                     <div>
-                        <h3 style={{
+                        <h3 className="vc-header-title" style={{
                             margin: 0, fontSize: "1.3rem", fontWeight: 800, color: "#fff",
                             letterSpacing: "-0.02em"
                         }}>Video Discussion</h3>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
                             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 10px #10b981" }} />
-                            <p style={{ margin: 0, fontSize: "0.8rem", color: "rgba(148,163,184,0.7)", fontWeight: 500 }}>
+                            <p className="vc-header-subtitle" style={{ margin: 0, fontSize: "0.8rem", color: "rgba(148,163,184,0.7)", fontWeight: 500 }}>
                                 {workspaceName} • {participents} Active Participants
                             </p>
                         </div>
@@ -71,7 +95,7 @@ const VcWrapper = ({ children, workspaceName ,onClose , participents }) => {
                     </button>
                 </div>
             </div>
-            <div style={{ flex: 1, display: "flex", padding: "24px", gap: "24px", overflow: "hidden" }}>
+            <div className="vc-body" style={{ flex: 1, display: "flex", padding: "24px", gap: "24px", overflow: "hidden" }}>
                 {children}
             </div>
         </div>

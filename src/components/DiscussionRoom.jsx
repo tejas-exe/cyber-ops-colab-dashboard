@@ -272,11 +272,55 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
         .dr-messages::-webkit-scrollbar { width: 4px; }
         .dr-messages::-webkit-scrollbar-track { background: transparent; }
         .dr-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius:99px; }
+        @media (max-width: 768px) {
+          .dr-popup {
+            right: 12px !important;
+            left: 12px !important;
+            width: auto !important;
+            bottom: 74px !important;
+            height: min(560px, calc(100vh - 110px)) !important;
+            border-radius: 18px !important;
+          }
+          .dr-popup-header {
+            padding: 0.8rem 0.85rem !important;
+          }
+          .dr-popup-title h3 {
+            font-size: 0.92rem !important;
+          }
+          .dr-popup-title p {
+            font-size: 0.58rem !important;
+          }
+          .dr-popup-actions {
+            gap: 6px !important;
+          }
+          .dr-video-btn {
+            padding: 6px 8px !important;
+            font-size: 0.68rem !important;
+          }
+          .dr-members-strip {
+            padding: 0.6rem 0.85rem !important;
+          }
+          .dr-messages {
+            padding: 0.9rem 0.85rem !important;
+          }
+          .dr-input-form {
+            padding: 0.75rem 0.85rem !important;
+          }
+          .dr-fab {
+            right: 12px !important;
+            bottom: 12px !important;
+            padding: 0 14px !important;
+            height: 46px !important;
+          }
+          .dr-fab-text {
+            display: none;
+          }
+        }
       `}</style>
 
       {/* ── Popup ────────────────────────────────────────────────────────────── */}
       {open && (
-        <div ref={popupRef} style={{
+        <div ref={popupRef} className="dr-popup" style={{
           position: "fixed", bottom: "90px", right: "28px",
           width: "min(420px, calc(100vw - 40px))",
           height: "min(580px, calc(100vh - 130px))",
@@ -290,14 +334,14 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
         }}>
 
           {/* ── Header ─────────────────────────────────────────────────────── */}
-          <div style={{
+          <div className="dr-popup-header" style={{
             background: "linear-gradient(90deg,rgba(99,102,241,0.22) 0%,rgba(139,92,246,0.14) 100%)",
             borderBottom: "1px solid rgba(255,255,255,0.07)",
             padding: "1.1rem 1.4rem",
             display: "flex", alignItems: "center", justifyContent: "space-between",
             flexShrink: 0,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div className="dr-popup-title" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <div style={{
                 width: 40, height: 40, borderRadius: "12px",
                 background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
@@ -324,7 +368,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="dr-popup-actions" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <button
                 onClick={() => setVideoCallOpen(true)}
                 className="dr-video-btn"
@@ -371,7 +415,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
           </div>
 
           {/* ── Online members strip ────────────────────────────────────────── */}
-          <div style={{
+          <div className="dr-members-strip" style={{
             padding: "0.75rem 1.4rem",
             borderBottom: "1px solid rgba(255,255,255,0.05)",
             display: "flex", alignItems: "center", gap: "10px", flexShrink: 0,
@@ -426,7 +470,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
           </div>
 
           {/* ── Input bar ──────────────────────────────────────────────────── */}
-          <form onSubmit={sendMessage} style={{
+          <form onSubmit={sendMessage} className="dr-input-form" style={{
             padding: "1rem 1.4rem",
             borderTop: "1px solid rgba(255,255,255,0.07)",
             display: "flex", gap: "10px", alignItems: "center",
@@ -490,7 +534,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
         }}
       >
         {open ? <X size={20} /> : <MessageCircle size={20} />}
-        <span>Discussion Room</span>
+        <span className="dr-fab-text">Discussion Room</span>
         {!open && unread > 0 && (
           <span style={{
             background: "#ef4444", borderRadius: "99px",

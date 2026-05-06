@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShieldAlert, Copy, Check } from 'lucide-react';
+import { ShieldAlert, Copy, Check, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const location = useLocation();
@@ -8,11 +8,16 @@ export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     setIsAuthenticated(!!token);
   }, [location]);
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   const copyMyId = async () => {
     try {
@@ -70,7 +75,15 @@ export default function Navbar() {
           <ShieldAlert className="logo-icon" />
           <span>CyberOps</span>
         </Link>
-        <div className="nav-links">
+        <button
+          className="nav-toggle"
+          onClick={() => setIsMenuOpen((prev) => !prev)}
+          aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={isMenuOpen}
+        >
+          {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        <div className={`nav-links ${isMenuOpen ? 'open' : ''}`}>
           <Link to="/" className={location.pathname === '/' ? 'active' : ''}>Home</Link>
           <Link to="/about" className={location.pathname === '/about' ? 'active' : ''}>About</Link>
           {isAuthenticated ? (
@@ -93,7 +106,7 @@ export default function Navbar() {
                 {isCopying ? <Check size={14} /> : <Copy size={14} />}
                 Copy My ID
               </button>
-              <button onClick={handleLogout} className="btn-primary nav-btn" style={{ padding: '0.5rem 1rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer' }}>Logout</button>
+              <button onClick={handleLogout} className="btn-primary nav-btn logout-btn" style={{ padding: '0.5rem 1rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer' }}>Logout</button>
             </>
           ) : (
             <Link to="/login" className="btn-primary nav-btn" style={{ textDecoration: 'none' }}>Get Started</Link>
@@ -103,7 +116,7 @@ export default function Navbar() {
 
       {/* Toast Notification */}
       {showToast && (
-        <div style={{
+        <div className="nav-toast" style={{
           position: 'fixed',
           bottom: '2rem',
           right: '2rem',

@@ -226,7 +226,7 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
 
     return (
         <VcWrapper workspaceName={workspaceName} onClose={onClose} participents={userOnCall}>
-            <div style={{
+            <div className="video-room-shell" style={{
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
@@ -236,7 +236,43 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
                 overflow: "hidden",
                 position: "relative"
             }}>
-                <div style={{
+                <style>{`
+                  @media (max-width: 768px) {
+                    .video-room-shell {
+                      gap: 0.75rem !important;
+                      padding: 0.75rem !important;
+                    }
+                    .video-room-grid {
+                      grid-template-columns: 1fr !important;
+                      gap: 0.75rem !important;
+                      padding-bottom: 84px !important;
+                    }
+                    .video-room-controls {
+                      bottom: 10px !important;
+                      left: 10px !important;
+                      right: 10px !important;
+                      transform: none !important;
+                      justify-content: space-between;
+                      gap: 8px !important;
+                      padding: 10px 12px !important;
+                      border-radius: 14px !important;
+                    }
+                    .video-room-controls button {
+                      height: 42px !important;
+                    }
+                    .video-room-end-btn {
+                      padding: 0 14px !important;
+                      font-size: 0.82rem;
+                    }
+                    .video-room-label {
+                      left: 10px !important;
+                      bottom: 10px !important;
+                      padding: 6px 10px !important;
+                      font-size: 0.74rem !important;
+                    }
+                  }
+                `}</style>
+                <div className="video-room-grid" style={{
                     flex: 1,
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
@@ -277,7 +313,7 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
                                 <VideoOff size={48} />
                             </div>
                         )}
-                        <div style={{
+                        <div className="video-room-label" style={{
                             position: "absolute", bottom: "20px", left: "20px",
                             padding: "8px 16px", background: "rgba(0,0,0,0.6)",
                             backdropFilter: "blur(12px)", borderRadius: "12px",
@@ -297,7 +333,7 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
                 </div>
 
                 {/* Floating Controls Overlay */}
-                <div style={{
+                <div className="video-room-controls" style={{
                     position: "absolute",
                     bottom: "32px",
                     left: "50%",
@@ -341,6 +377,7 @@ const VideoRoom = ({ workspaceName, onClose, workspaceId, userId }) => {
 
                     <button
                         onClick={onClose}
+                        className="video-room-end-btn"
                         style={{
                             padding: "0 24px", height: "48px", borderRadius: "16px",
                             display: "flex", alignItems: "center", justifyContent: "center",
@@ -382,7 +419,7 @@ const RemoteVideo = ({ stream, socketId }) => {
                 playsInline
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
-            <div style={{
+            <div className="video-room-label" style={{
                 position: "absolute", bottom: "20px", left: "20px",
                 padding: "8px 16px", background: "rgba(0,0,0,0.6)",
                 backdropFilter: "blur(12px)", borderRadius: "12px",
