@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Users, Send, Smile, Video } from "lucide-react";
 import VideoRoom from "./VideoCallRoom";
-import { socket } from "../sockets/socket";
+// import { socket } from "../sockets/socket";
+import VcComponentRoom from "./VcComponentRoom";
+import { useSockets } from "../providers/Socket";
 
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -134,7 +136,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
   const [messages, setMessages] = useState(DEMO_MESSAGES);
   const [videoCallOpen, setVideoCallOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-
+  const socket = useSockets()
   useEffect(() => {
 
     const onConnection = () => {
@@ -370,7 +372,10 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
             <div className="dr-popup-actions" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <button
-                onClick={() => setVideoCallOpen(true)}
+                onClick={() => {
+                  socket.emit("join-room", { workspaceId: workspaceId })
+                   setVideoCallOpen(true)
+                }}
                 className="dr-video-btn"
                 style={{
                   background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
@@ -506,8 +511,14 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
 
       {/* ── Video Call Popup ────────────────────────────────────────────────── */}
       {videoCallOpen && (
-        <VideoRoom
-          workspaceName={workspaceName}
+        // <VideoRoom
+        //   workspaceName={workspaceName}
+        //   onClose={() => setVideoCallOpen(false)}
+        //   workspaceId={workspaceId}
+        //   userId={user?.id}
+        // />
+        <VcComponentRoom
+          //   workspaceName={workspaceName}
           onClose={() => setVideoCallOpen(false)}
           workspaceId={workspaceId}
           userId={user?.id}
