@@ -219,7 +219,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
  //
  useEffect(()=>{
   if(videoCallOpen){
-     socket.emit("join-room", { workspaceId: workspaceId })
+     socket.emit("join-video-room", { workSpaceId: workspaceId })
   }
  },[videoCallOpen]) 
 

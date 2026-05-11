@@ -24,9 +24,7 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
         socket.on("user-joined", handleUserJoined);
 
         return () => {
-            socket.off("online-user-count", handleOnlineUserCount);
-            socket.off("user-joined", handleUserJoined);
-            socket.off("leave-room" ,{workSpaceId:workspaceId})
+
         };
 
     }, [socket]);
@@ -35,7 +33,7 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
         <VcWrapper
             workspaceName={"Test Vc"}
             onClose={()=>{
-                socket.emit("leave-room" ,{workSpaceId:workspaceId})
+                socket.emit("leave-video-room" ,{workSpaceId:workspaceId})
                 onClose()
             }}
             participents={`0${olCount}`}
