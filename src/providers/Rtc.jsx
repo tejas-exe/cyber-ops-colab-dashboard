@@ -2,7 +2,9 @@ import { createContext, useContext, useMemo } from "react";
 
 export const RtcContext = createContext(null);
 
-export const useRtc = useContext(RtcContext);
+export const useRtc = () => {
+  return useContext(RtcContext);
+};
 
 export const RtcProvider = (props) => {
   const peer = useMemo(() => {
@@ -31,10 +33,14 @@ export const RtcProvider = (props) => {
     return answer;
   };
 
-   const offerAccepted  = async (ans)=>{
-    await peer.setRemoteDescription(ans)
-   }
-  <RtcContext.Provider value={{ peer, createOffer, createAnswer  ,offerAccepted}}>
-    {props.children}
-  </RtcContext.Provider>;
+  const offerAccepted = async (ans) => {
+    await peer.setRemoteDescription(ans);
+  };
+  return (
+    <RtcContext.Provider
+      value={{ peer, createOffer, createAnswer, offerAccepted }}
+    >
+      {props.children}
+    </RtcContext.Provider>
+  );
 };
