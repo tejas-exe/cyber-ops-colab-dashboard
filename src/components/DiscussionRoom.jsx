@@ -136,6 +136,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
   const [messages, setMessages] = useState(DEMO_MESSAGES);
   const [videoCallOpen, setVideoCallOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [roomStatus, setRoomStatus]=useState("Start")
   const socket = useSockets()
 
   useEffect(() => {
@@ -217,11 +218,22 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
   }, [messages, open]);
 
  //
- useEffect(()=>{
-  if(videoCallOpen){
-     socket.emit("join-video-room", { workSpaceId: workspaceId })
+useEffect(() => {
+  const handleCallActive = (data) => {
+    if (data.workSpaceId == workspaceId) {
+      setRoomStatus(data.status ? "Join" : "Start");
+    }
+  };
+  socket.on("on-call-active", handleCallActive);
+
+  if (videoCallOpen) {
+    socket.emit("join-video-room", { workSpaceId: workspaceId });
   }
- },[videoCallOpen]) 
+
+  return () => {
+    socket.off("on-call-active", handleCallActive); // ← cleanup
+  };
+}, [videoCallOpen, socket, workspaceId]);
 
   function sendMessage(e) {
     e.preventDefault();
@@ -409,7 +421,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
                 }}
               >
                 <Video size={14} />
-                Video Discussion
+                {`${roomStatus} Video Discussion`} 
               </button>
 
               <button onClick={() => setOpen(false)} style={{
