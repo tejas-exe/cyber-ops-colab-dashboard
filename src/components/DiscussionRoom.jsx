@@ -137,6 +137,7 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
   const [videoCallOpen, setVideoCallOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const socket = useSockets()
+
   useEffect(() => {
 
     const onConnection = () => {
@@ -214,6 +215,13 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     if (open) setUnread(0);
   }, [messages, open]);
+
+ //
+ useEffect(()=>{
+  if(videoCallOpen){
+     socket.emit("join-room", { workspaceId: workspaceId })
+  }
+ },[videoCallOpen]) 
 
   function sendMessage(e) {
     e.preventDefault();
@@ -373,7 +381,6 @@ export default function DiscussionRoom({ workspaceName, workspaceId, members = [
             <div className="dr-popup-actions" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <button
                 onClick={() => {
-                  socket.emit("join-room", { workspaceId: workspaceId })
                    setVideoCallOpen(true)
                 }}
                 className="dr-video-btn"
