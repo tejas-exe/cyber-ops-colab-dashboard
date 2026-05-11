@@ -1,46 +1,62 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import VcWrapper from "./VcWrapper";
 import { useSockets } from "../providers/Socket";
-
+import { useRtc } from "../providers/Rtc";
 
 const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
-   
-    const [olCount, setOlCount] = useState(0);
-    const socket = useSockets()
-    useEffect(() => {
+  const [olCount, setOlCount] = useState(0);
+  const socket = useSockets();
+  const {createOffer, createAnswer, offerAccepted } = useRtc();
 
-        const handleOnlineUserCount = (data) => {
-            console.log("online-user-count received");
-            console.log(data);
+  const handleOnlineUserCount = (data) => {
+    setOlCount(data.particepents);
+  };
 
-            setOlCount(data.particepents);
-        };
+  const handleUserJoined = useCallback(async () => {
+    const offer = await createOffer();
+    socket.emit("call-offer", { workSpaceId: workspaceId, offer, userId });
+  }, [socket, workspaceId]);
 
-        const handleUserJoined = (data) => {
-            console.log("user joined", data);
-        };
+  const handelIncomingOffer = useCallback(
+    async (data) => {
+      const { from, offer, workSpaceId } = data;
+      const ans = await createAnswer(offer);
+      socket.emit("offer-accepted", { user: from, ans, workSpaceId });
+    },
+    [socket, workspaceId],
+  );
 
-        socket.on("online-user-count", handleOnlineUserCount);
-        socket.on("user-joined", handleUserJoined);
+  const handelOfferAccepted = useCallback(async (data) => {
+    const { ans } = data;
+    await offerAccepted(ans);
+  }, []);
 
-        return () => {
+  useEffect(() => {
+    socket.on("online-user-count", handleOnlineUserCount);
+    socket.on("user-joined", handleUserJoined);
+    socket.on("incoming-offer", handelIncomingOffer);
+    socket.on("offer-accepted", handelOfferAccepted);
 
-        };
+    return () => {
+      socket.off("user-joined", handleUserJoined);
+      socket.off("online-user-count", handleOnlineUserCount);
+      socket.off("incoming-offer", handelIncomingOffer);
+      socket.off("offer-accepted", handelOfferAccepted);
+    };
+  }, [socket, workspaceId]);
 
-    }, [socket]);
-
-    return (
-        <VcWrapper
-            workspaceName={"Test Vc"}
-            onClose={()=>{
-                socket.emit("leave-video-room" ,{workSpaceId:workspaceId})
-                onClose()
-            }}
-            participents={`0${olCount}`}
-        >
-            <h1>Hello</h1>
-        </VcWrapper>
-    );
+  return (
+    <VcWrapper
+      workspaceName={"Test Vc"}
+      onClose={() => {
+        socket.emit("leave-video-room", { workSpaceId: workspaceId });
+        onClose();
+      }}
+      participents={`0${olCount}`}
+    >
+      <h1>Hello</h1>
+    </VcWrapper>
+  );
 };
 
 export default VcComponentRoom;

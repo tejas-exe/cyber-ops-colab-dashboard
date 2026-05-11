@@ -9,11 +9,13 @@ import LoginPage from './pages/LoginPage';
 import AuthCallback from './pages/AuthCallback';
 import './index.css';
 import { SocketProvider } from './providers/Socket';
+import { RtcProvider } from './providers/Rtc';
 
 export default function App() {
   return (
     <>
       <SocketProvider>
+        <RtcProvider>
         <Router>
           <div className="app-layout">
             <Navbar />
@@ -30,6 +32,7 @@ export default function App() {
             <Footer />
           </div>
         </Router>
+        </RtcProvider>
       </SocketProvider>
     </>
   );
