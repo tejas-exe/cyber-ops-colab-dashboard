@@ -21,6 +21,9 @@ export const RtcProvider = (props) => {
   }, []);
 
   const createOffer = async () => {
+    if (peer.signalingState !== "stable" && peer.localDescription?.type === "offer") {
+      return peer.localDescription;
+    }
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
     return offer;
@@ -34,6 +37,18 @@ export const RtcProvider = (props) => {
   };
 
   const offerAccepted = async (ans) => {
+    if (!ans) return;
+
+    const isDuplicateAnswer =
+      peer.currentRemoteDescription?.type === "answer" &&
+      peer.currentRemoteDescription?.sdp === ans.sdp;
+
+    if (isDuplicateAnswer) return;
+
+    if (peer.signalingState !== "have-local-offer") {
+      return;
+    }
+
     await peer.setRemoteDescription(ans);
   };
   return (

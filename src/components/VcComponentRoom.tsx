@@ -6,7 +6,7 @@ import { useRtc } from "../providers/Rtc";
 const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
   const [olCount, setOlCount] = useState(0);
   const socket = useSockets();
-  const {createOffer, createAnswer, offerAccepted } = useRtc();
+  const { createOffer, createAnswer, offerAccepted } = useRtc();
 
   const handleOnlineUserCount = (data) => {
     setOlCount(data.particepents);
@@ -15,21 +15,21 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
   const handleUserJoined = useCallback(async () => {
     const offer = await createOffer();
     socket.emit("call-offer", { workSpaceId: workspaceId, offer, userId });
-  }, [socket, workspaceId]);
+  }, [createOffer, socket, userId, workspaceId]);
 
   const handelIncomingOffer = useCallback(
     async (data) => {
       const { from, offer, workSpaceId } = data;
       const ans = await createAnswer(offer);
-      socket.emit("offer-accepted", { user: from, ans, workSpaceId });
+      socket.emit("offer-accepted", { to: from, ans, workSpaceId });
     },
-    [socket, workspaceId],
+    [createAnswer, socket],
   );
 
   const handelOfferAccepted = useCallback(async (data) => {
     const { ans } = data;
     await offerAccepted(ans);
-  }, []);
+  }, [offerAccepted]);
 
   useEffect(() => {
     socket.on("online-user-count", handleOnlineUserCount);
@@ -43,7 +43,7 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
       socket.off("incoming-offer", handelIncomingOffer);
       socket.off("offer-accepted", handelOfferAccepted);
     };
-  }, [socket, workspaceId]);
+  }, [handelIncomingOffer, handelOfferAccepted, handleUserJoined, socket, workspaceId]);
 
   return (
     <VcWrapper
