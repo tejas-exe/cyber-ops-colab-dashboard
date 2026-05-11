@@ -1,13 +1,86 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import VcWrapper from "./VcWrapper";
 import { useSockets } from "../providers/Socket";
 import { useRtc } from "../providers/Rtc";
 
+//!
+const VideoTile = ({ stream, muted = false, label = "" }) => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (ref.current && stream) {
+      ref.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderRadius: 8,
+        overflow: "hidden",
+        background: "#1a1a1a",
+      }}
+    >
+      <video
+        ref={ref}
+        autoPlay
+        playsInline
+        muted={muted}
+        style={{ width: "100%", display: "block" }}
+      />
+      {label && (
+        <span
+          style={{
+            position: "absolute",
+            bottom: 6,
+            left: 8,
+            color: "#fff",
+            fontSize: 12,
+            background: "rgba(0,0,0,0.5)",
+            padding: "2px 6px",
+            borderRadius: 4,
+          }}
+        >
+          {label}
+        </span>
+      )}
+    </div>
+  );
+};
+
 const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
   const [olCount, setOlCount] = useState(0);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const localStreamRef = useRef(null);
+
   const socket = useSockets();
   const { createOffer, createAnswer, offerAccepted } = useRtc();
 
+  const handelMediaStream = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setLocalStream(stream);
+    } catch (error) {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: true,
+      });
+      setLocalStream(stream);
+    }
+  };
+  useEffect(() => {
+    handelMediaStream();
+    return () => {
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  //! SOCKET EVENTS
   const handleOnlineUserCount = (data) => {
     setOlCount(data.particepents);
   };
@@ -26,10 +99,13 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
     [createAnswer, socket],
   );
 
-  const handelOfferAccepted = useCallback(async (data) => {
-    const { ans } = data;
-    await offerAccepted(ans);
-  }, [offerAccepted]);
+  const handelOfferAccepted = useCallback(
+    async (data) => {
+      const { ans } = data;
+      await offerAccepted(ans);
+    },
+    [offerAccepted],
+  );
 
   useEffect(() => {
     socket.on("online-user-count", handleOnlineUserCount);
@@ -43,8 +119,14 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
       socket.off("incoming-offer", handelIncomingOffer);
       socket.off("offer-accepted", handelOfferAccepted);
     };
-  }, [handelIncomingOffer, handelOfferAccepted, handleUserJoined, socket, workspaceId]);
-
+  }, [
+    handelIncomingOffer,
+    handelOfferAccepted,
+    handleUserJoined,
+    socket,
+    workspaceId,
+  ]);
+  //!-----------------------------------XXXX-------------------------------------------
   return (
     <VcWrapper
       workspaceName={"Test Vc"}
@@ -54,7 +136,17 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
       }}
       participents={`0${olCount}`}
     >
-      <h1>Hello</h1>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: remoteStream ? "1fr 1fr" : "1fr",
+          gap: 8,
+          padding: 8,
+        }}
+      >
+        {localStream && <VideoTile stream={localStream} muted label="You" />}
+        {remoteStream && <VideoTile stream={remoteStream} label="Peer" />}
+      </div>
     </VcWrapper>
   );
 };
