@@ -89,10 +89,10 @@ const VulnerabilityVisualizer = ({ data }) => {
   const renderTabs = () => (
     <div className="viz-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '1rem' }}>
       {[
-        { id: 'force', label: 'Force Network', icon: <Network size={18} />, color: '#3b82f6' },
-        { id: 'river', label: 'Risk River', icon: <Waves size={18} />, color: '#8b5cf6' },
-        { id: 'tree', label: 'Treemap', icon: <LayoutGrid size={18} />, color: '#10b981' },
-        { id: 'parallel', label: 'Analysis Flow', icon: <Divide size={18} />, color: '#f59e0b' }
+        { id: 'force', label: 'Information Graph', icon: <Network size={18} />, color: '#3b82f6' },
+        { id: 'river', label: 'Risk Line Chart', icon: <Waves size={18} />, color: '#8b5cf6' },
+        // { id: 'tree', label: 'Treemap', icon: <LayoutGrid size={18} />, color: '#10b981' },
+        // { id: 'parallel', label: 'Analysis Flow', icon: <Divide size={18} />, color: '#f59e0b' }
       ].map(tab => (
         <button
           key={tab.id}
