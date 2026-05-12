@@ -155,6 +155,7 @@ const VcComponentRoom = ({
     onTrackRef,
     onIceCandidateRef,
   } = useRtc();
+  const hasPeerConnected = olCount > 1;
 
   useEffect(() => {
     setChatOpen(Boolean(chatPanel));
@@ -192,6 +193,7 @@ const VcComponentRoom = ({
       if (!stream) return;
 
       const tracks = stream.getTracks();
+      let addedNewTrack = false;
       for (const track of tracks) {
         const sender = peer
           .getSenders()
@@ -204,11 +206,25 @@ const VcComponentRoom = ({
           await sender.replaceTrack(track);
         } else {
           peer.addTrack(track, stream);
+          addedNewTrack = true;
         }
       }
+
+      return addedNewTrack;
     },
     [peer],
   );
+
+  const createRoomOffer = useCallback(async () => {
+    if (!rtcReadyRef.current) {
+      pendingOfferRef.current = true;
+      return;
+    }
+
+    pendingOfferRef.current = false;
+    const offer = await createOffer();
+    socket.emit("call-offer", { workSpaceId: workspaceId, offer, userId });
+  }, [createOffer, socket, userId, workspaceId]);
 
   const handleMediaStream = useCallback(async () => {
     let stream = null;
@@ -244,23 +260,15 @@ const VcComponentRoom = ({
     if (stream) {
       localStreamRef.current = stream;
       setLocalStream(stream);
-      await attachStreamToPeer(stream);
+      const addedNewTrack = await attachStreamToPeer(stream);
+      if (addedNewTrack && rtcReadyRef.current) {
+        await createRoomOffer();
+      }
     } else {
       localStreamRef.current = null;
       setLocalStream(null);
     }
-  }, [attachStreamToPeer]);
-
-  const createRoomOffer = useCallback(async () => {
-    if (!rtcReadyRef.current) {
-      pendingOfferRef.current = true;
-      return;
-    }
-
-    pendingOfferRef.current = false;
-    const offer = await createOffer();
-    socket.emit("call-offer", { workSpaceId: workspaceId, offer, userId });
-  }, [createOffer, socket, userId, workspaceId]);
+  }, [attachStreamToPeer, createRoomOffer]);
 
   const stopScreenShare = useCallback(async () => {
     const shareStream = screenStreamRef.current;
@@ -306,11 +314,13 @@ const VcComponentRoom = ({
       const videoSender = peer
         .getSenders()
         .find((sender) => sender.track?.kind === "video");
+      let needsRenegotiation = false;
 
       if (videoSender) {
         await videoSender.replaceTrack(screenTrack);
       } else {
         peer.addTrack(screenTrack, displayStream);
+        needsRenegotiation = true;
       }
 
       screenTrack.onended = () => {
@@ -321,10 +331,14 @@ const VcComponentRoom = ({
       setIsScreenSharing(true);
       setLocalStream(displayStream);
       setMediaMessage("Screen sharing active");
+
+      if (needsRenegotiation && rtcReadyRef.current) {
+        await createRoomOffer();
+      }
     } catch {
       setMediaMessage("Screen share was cancelled or blocked");
     }
-  }, [peer, stopScreenShare]);
+  }, [createRoomOffer, peer, stopScreenShare]);
 
   useEffect(() => {
     onTrackRef.current = (stream) => {
@@ -481,7 +495,9 @@ const VcComponentRoom = ({
               flex: 1,
               display: "grid",
               gridTemplateColumns:
-                remoteStream && focusedTile === null ? "1fr 1fr" : "1fr",
+                (remoteStream || hasPeerConnected) && focusedTile === null
+                  ? "1fr 1fr"
+                  : "1fr",
               gap: 8,
               padding: 8,
               minHeight: 0,
@@ -500,10 +516,11 @@ const VcComponentRoom = ({
                 }
               />
             )}
-            {remoteStream && focusedTile !== "local" && (
+            {(remoteStream || hasPeerConnected) && focusedTile !== "local" && (
               <VideoTile
                 stream={remoteStream}
                 label="Peer"
+                placeholder="Peer joined. Waiting for camera/mic or screen share."
                 canToggleFocus
                 isFocused={focusedTile === "remote"}
                 onToggleFocus={() =>
