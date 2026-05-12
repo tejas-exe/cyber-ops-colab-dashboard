@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Users, Send, Smile, Video } from "lucide-react";
-import VideoRoom from "./VideoCallRoom";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { MessageCircle, X, Users, Send, Video, Copy, Check } from "lucide-react";
 // import { socket } from "../sockets/socket";
 import VcComponentRoom from "./VcComponentRoom";
 import { useSockets } from "../providers/Socket";
@@ -15,6 +14,15 @@ const PALETTE = [
   ["#f59e0b", "#ef4444"],
   ["#06b6d4", "#8b5cf6"],
 ];
+
+const getPaletteIndexFromSeed = (seed = "") => {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) % PALETTE.length;
+};
 
 function MemberAvatar({ member, index, size = 40 }) {
   const [hovered, setHovered] = useState(false);
@@ -133,16 +141,26 @@ function MemberAvatar({ member, index, size = 40 }) {
 /* ─────────────────────────────────────────────────────────────────────────────
    CHAT MESSAGE
 ───────────────────────────────────────────────────────────────────────────── */
-function ChatMessage({ msg, isOwn }) {
+function ChatMessage({
+  msg,
+  isOwn,
+  compact = false,
+  onCopyMessage,
+  isCopied = false,
+}) {
   const [from, to] = PALETTE[msg.colorIndex % PALETTE.length];
+  const bubbleBackground = isOwn
+    ? `linear-gradient(135deg,${from}f2,${to}e6)`
+    : `linear-gradient(135deg,${from}cc,${to}bc)`;
+
   return (
     <div
       style={{
         display: "flex",
-        gap: "10px",
+        gap: "11px",
         flexDirection: isOwn ? "row-reverse" : "row",
         alignItems: "flex-start",
-        marginBottom: "1rem",
+        marginBottom: compact ? "0.8rem" : "0.95rem",
       }}
     >
       {/* avatar */}
@@ -159,47 +177,245 @@ function ChatMessage({ msg, isOwn }) {
           fontSize: "0.78rem",
           fontWeight: 800,
           color: "#fff",
-          border: "2px solid rgba(255,255,255,0.12)",
+          border: "2px solid rgba(255,255,255,0.16)",
+          boxShadow: `0 4px 12px ${from}33`,
         }}
       >
         {msg.author.charAt(0).toUpperCase()}
       </div>
       <div
         style={{
-          maxWidth: "72%",
+          maxWidth: compact ? "82%" : "75%",
           display: "flex",
           flexDirection: "column",
-          gap: "4px",
+          gap: "5px",
           alignItems: isOwn ? "flex-end" : "flex-start",
+          minWidth: 0,
+          flex: 1,
         }}
       >
         <span
           style={{
             fontSize: "0.7rem",
-            color: "rgba(148,163,184,0.55)",
+            color: "rgba(148,163,184,0.64)",
             fontWeight: 600,
+            maxWidth: "100%",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {msg.author} · {msg.time}
         </span>
         <div
           style={{
-            padding: "10px 14px",
+            padding: compact ? "9px 12px" : "10px 14px",
             borderRadius: isOwn ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
-            background: isOwn
-              ? `linear-gradient(135deg,${from}cc,${to}bb)`
-              : "rgba(255,255,255,0.05)",
-            border: isOwn ? "none" : "1px solid rgba(255,255,255,0.07)",
+            background: bubbleBackground,
+            border: `1px solid ${from}4d`,
             fontSize: "0.88rem",
             lineHeight: 1.5,
             color: "#f1f5f9",
-            boxShadow: isOwn ? `0 4px 14px ${from}44` : "none",
+            boxShadow: `0 5px 16px ${from}38`,
+            backdropFilter: "blur(6px)",
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
+            maxWidth: "100%",
           }}
         >
           {msg.text}
         </div>
+        <button
+          type="button"
+          onClick={() => onCopyMessage?.(msg)}
+          style={{
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: isCopied ? "rgba(16,185,129,0.2)" : "rgba(2,6,23,0.35)",
+            color: isCopied ? "#34d399" : "rgba(226,232,240,0.85)",
+            borderRadius: 999,
+            padding: "3px 8px",
+            fontSize: "0.66rem",
+            lineHeight: 1.2,
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            backdropFilter: "blur(6px)",
+          }}
+          title="Copy message"
+          aria-label="Copy message"
+        >
+          {isCopied ? <Check size={12} /> : <Copy size={12} />}
+          {isCopied ? "Copied" : "Copy"}
+        </button>
       </div>
     </div>
+  );
+}
+
+function ChatPanel({
+  messages,
+  input,
+  onInputChange,
+  onSubmit,
+  messagesRef,
+  inputRef,
+  compact = false,
+  panelHeight = "100%",
+}) {
+  const [copiedId, setCopiedId] = useState(null);
+  const [copyLog, setCopyLog] = useState("");
+
+  const handleCopyMessage = async (msg) => {
+    if (!msg?.text) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(msg.text);
+      } else {
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = msg.text;
+        tempTextArea.setAttribute("readonly", "");
+        tempTextArea.style.position = "absolute";
+        tempTextArea.style.left = "-9999px";
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+      }
+
+      setCopiedId(msg.id);
+      setCopyLog("Copied to clipboard");
+      setTimeout(() => setCopiedId(null), 1300);
+      setTimeout(() => setCopyLog(""), 1700);
+    } catch {
+      setCopyLog("Could not copy message");
+      setTimeout(() => setCopyLog(""), 1700);
+    }
+  };
+
+  return (
+    <>
+      <div
+        ref={messagesRef}
+        className="dr-messages"
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: compact ? "0.95rem 1rem" : "1.2rem 1.4rem",
+          minHeight: 0,
+          height: panelHeight,
+        }}
+      >
+        {messages.map((msg) =>
+          msg.isSystem ? (
+            <div
+              key={msg.id}
+              style={{
+                textAlign: "center",
+                margin: "0.5rem 0 1.25rem",
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  maxWidth: "85%",
+                  padding: "6px 16px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "14px",
+                  fontSize: "0.73rem",
+                  color: "rgba(148,163,184,0.6)",
+                  fontStyle: "italic",
+                  lineHeight: "1.5",
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
+                }}
+              >
+                {msg.text}
+              </span>
+            </div>
+          ) : (
+            <ChatMessage
+              key={msg.id}
+              msg={msg}
+              isOwn={!!msg.isOwn}
+              compact={compact}
+              onCopyMessage={handleCopyMessage}
+              isCopied={copiedId === msg.id}
+            />
+          ),
+        )}
+      </div>
+      {copyLog && (
+        <div
+          style={{
+            padding: "0 1rem 0.35rem",
+            fontSize: "0.72rem",
+            fontWeight: 600,
+            color: copyLog.includes("Could not") ? "#fca5a5" : "#6ee7b7",
+            textAlign: "center",
+          }}
+        >
+          {copyLog}
+        </div>
+      )}
+
+      <form
+        onSubmit={onSubmit}
+        className="dr-input-form"
+        style={{
+          padding: compact ? "0.85rem 1rem" : "1rem 1.4rem",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+          display: "flex",
+          gap: "10px",
+          alignItems: "center",
+          background: "rgba(255,255,255,0.015)",
+          flexShrink: 0,
+        }}
+      >
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => onInputChange(e.target.value)}
+          placeholder="Message the team…"
+          style={{
+            flex: 1,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "12px",
+            padding: "0.65rem 1rem",
+            color: "#f1f5f9",
+            fontSize: "0.88rem",
+            outline: "none",
+            transition: "border 0.2s",
+          }}
+          onFocus={(e) => (e.target.style.borderColor = "rgba(99,102,241,0.5)")}
+          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+        />
+        <button
+          type="submit"
+          className="dr-send"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "12px",
+            background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 14px rgba(99,102,241,0.4)",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+        >
+          <Send size={17} color="#fff" />
+        </button>
+      </form>
+    </>
   );
 }
 
@@ -230,6 +446,38 @@ export default function DiscussionRoom({
   const [unread, setUnread] = useState(0);
   const [roomStatus, setRoomStatus] = useState("Start");
   const socket = useSockets();
+  const popupRef = useRef(null);
+  const popupMessagesRef = useRef(null);
+  const popupInputRef = useRef(null);
+  const videoMessagesRef = useRef(null);
+  const videoInputRef = useRef(null);
+
+  const memberColorMap = useMemo(() => {
+    const map = new Map();
+    members.forEach((member, index) => {
+      const colorIndex = index % PALETTE.length;
+      const memberId = member?.user?.id || member?.id;
+      const memberName = member?.user?.name || member?.name;
+
+      if (memberId) map.set(`id:${memberId}`, colorIndex);
+      if (memberName) map.set(`name:${memberName.toLowerCase()}`, colorIndex);
+    });
+    return map;
+  }, [members]);
+
+  const resolveColorIndex = useCallback(
+    (authorId, authorName) => {
+      if (authorId && memberColorMap.has(`id:${authorId}`)) {
+        return memberColorMap.get(`id:${authorId}`);
+      }
+      const nameKey = (authorName || "").toLowerCase();
+      if (nameKey && memberColorMap.has(`name:${nameKey}`)) {
+        return memberColorMap.get(`name:${nameKey}`);
+      }
+      return getPaletteIndexFromSeed(`${authorId || ""}:${authorName || ""}`);
+    },
+    [memberColorMap],
+  );
 
   useEffect(() => {
     const onConnection = () => {
@@ -247,12 +495,13 @@ export default function DiscussionRoom({
         const mapped = history.map((m) => ({
           id: m.id,
           author: m.user?.name || "Member",
+          authorId: m.userId || m.user?.id,
           text: m.message,
           time: new Date(m.createdAt).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
           }),
-          colorIndex: 0,
+          colorIndex: resolveColorIndex(m.userId || m.user?.id, m.user?.name),
           isOwn: m.userId === user?.id,
         }));
         setMessages([DEMO_MESSAGES[0], ...mapped]);
@@ -266,6 +515,7 @@ export default function DiscussionRoom({
           {
             id: Date.now() + Math.random(),
             author: data.author || "Guest",
+            authorId: data.authorId,
             text: data.text,
             time:
               data.time ||
@@ -273,11 +523,11 @@ export default function DiscussionRoom({
                 hour: "2-digit",
                 minute: "2-digit",
               }),
-            colorIndex: data.colorIndex || 0,
+            colorIndex: resolveColorIndex(data.authorId, data.author),
             isOwn: data.authorId === user?.id,
           },
         ]);
-        if (!open) setUnread((u) => u + 1);
+        if (!open && !videoCallOpen) setUnread((u) => u + 1);
       }
     };
 
@@ -290,11 +540,7 @@ export default function DiscussionRoom({
       socket.off("received-message", handleReceived);
       socket.emit("leave-room", { workSpaceId: workspaceId });
     };
-  }, [user?.id, open]);
-
-  const popupRef = useRef(null);
-  const messagesRef = useRef(null);
-  const inputRef = useRef(null);
+  }, [open, resolveColorIndex, socket, user?.id, videoCallOpen, workspaceId]);
 
   // show up to 5 avatars in footer
   const visible = members.slice(0, 5);
@@ -312,10 +558,13 @@ export default function DiscussionRoom({
 
   // scroll to bottom on new message
   useEffect(() => {
-    if (messagesRef.current)
-      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-    if (open) setUnread(0);
-  }, [messages, open]);
+    if (popupMessagesRef.current) {
+      popupMessagesRef.current.scrollTop = popupMessagesRef.current.scrollHeight;
+    }
+    if (videoMessagesRef.current) {
+      videoMessagesRef.current.scrollTop = videoMessagesRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   //
   useEffect(() => {
@@ -335,7 +584,7 @@ export default function DiscussionRoom({
     };
   }, [videoCallOpen, socket, workspaceId]);
 
-  function sendMessage(e) {
+  function sendMessage(e, focusRef) {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
@@ -353,7 +602,7 @@ export default function DiscussionRoom({
       authorId: user?.id,
       workSpaceId: workspaceId,
       time,
-      colorIndex: 0,
+      colorIndex: resolveColorIndex(user?.id, authorName),
     };
 
     socket.emit("sent-message", messageData);
@@ -372,8 +621,11 @@ export default function DiscussionRoom({
     */
 
     setInput("");
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setTimeout(() => focusRef?.current?.focus(), 50);
   }
+
+  const handlePopupSend = (e) => sendMessage(e, popupInputRef);
+  const handleVideoSend = (e) => sendMessage(e, videoInputRef);
 
   return (
     <>
@@ -443,7 +695,7 @@ export default function DiscussionRoom({
       `}</style>
 
       {/* ── Popup ────────────────────────────────────────────────────────────── */}
-      {open && (
+      {open && !videoCallOpen && (
         <div
           ref={popupRef}
           className="dr-popup"
@@ -646,107 +898,14 @@ export default function DiscussionRoom({
             </div>
           </div>
 
-          {/* ── Messages area ──────────────────────────────────────────────── */}
-          <div
-            ref={messagesRef}
-            className="dr-messages"
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "1.2rem 1.4rem",
-            }}
-          >
-            {messages.map((msg) =>
-              msg.isSystem ? (
-                <div
-                  key={msg.id}
-                  style={{
-                    textAlign: "center",
-                    margin: "0.5rem 0 1.25rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      maxWidth: "85%",
-                      padding: "6px 16px",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: "14px",
-                      fontSize: "0.73rem",
-                      color: "rgba(148,163,184,0.6)",
-                      fontStyle: "italic",
-                      lineHeight: "1.5",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {msg.text}
-                  </span>
-                </div>
-              ) : (
-                <ChatMessage key={msg.id} msg={msg} isOwn={!!msg.isOwn} />
-              ),
-            )}
-          </div>
-
-          {/* ── Input bar ──────────────────────────────────────────────────── */}
-          <form
-            onSubmit={sendMessage}
-            className="dr-input-form"
-            style={{
-              padding: "1rem 1.4rem",
-              borderTop: "1px solid rgba(255,255,255,0.07)",
-              display: "flex",
-              gap: "10px",
-              alignItems: "center",
-              background: "rgba(255,255,255,0.015)",
-              flexShrink: 0,
-            }}
-          >
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Message the team…"
-              style={{
-                flex: 1,
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "12px",
-                padding: "0.65rem 1rem",
-                color: "#f1f5f9",
-                fontSize: "0.88rem",
-                outline: "none",
-                transition: "border 0.2s",
-              }}
-              onFocus={(e) =>
-                (e.target.style.borderColor = "rgba(99,102,241,0.5)")
-              }
-              onBlur={(e) =>
-                (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-              }
-            />
-            <button
-              type="submit"
-              className="dr-send"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "12px",
-                background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-                border: "none",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 14px rgba(99,102,241,0.4)",
-                transition: "all 0.2s",
-                flexShrink: 0,
-              }}
-            >
-              <Send size={17} color="#fff" />
-            </button>
-          </form>
+          <ChatPanel
+            messages={messages}
+            input={input}
+            onInputChange={setInput}
+            onSubmit={handlePopupSend}
+            messagesRef={popupMessagesRef}
+            inputRef={popupInputRef}
+          />
         </div>
       )}
 
@@ -763,6 +922,43 @@ export default function DiscussionRoom({
           onClose={() => setVideoCallOpen(false)}
           workspaceId={workspaceId}
           userId={user?.id}
+          chatPanel={
+            <div
+              style={{
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                borderRadius: "16px",
+                overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.1)",
+                background:
+                  "linear-gradient(160deg,rgba(10,15,30,0.96) 0%,rgba(17,24,39,0.96) 100%)",
+              }}
+            >
+              <div
+                style={{
+                  padding: "0.8rem 1rem",
+                  borderBottom: "1px solid rgba(255,255,255,0.08)",
+                  fontSize: "0.76rem",
+                  fontWeight: 700,
+                  color: "rgba(226,232,240,0.86)",
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Discussion Chat
+              </div>
+              <ChatPanel
+                messages={messages}
+                input={input}
+                onInputChange={setInput}
+                onSubmit={handleVideoSend}
+                messagesRef={videoMessagesRef}
+                inputRef={videoInputRef}
+                compact
+              />
+            </div>
+          }
         />
       )}
 

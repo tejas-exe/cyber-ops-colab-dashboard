@@ -195,13 +195,27 @@ const VulnerabilityVisualizer = ({ data }) => {
 
         {activeTab === 'river' && (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={processedData} margin={{ top: 50, right: 30, left: 0, bottom: 0 }}>
+            <AreaChart data={processedData} margin={{ top: 30, right: 30, left: 10, bottom: 44 }}>
               <defs>
                 <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
                   <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                 </linearGradient>
               </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <XAxis
+                dataKey="cve"
+                tick={{ fill: 'rgba(226,232,240,0.75)', fontSize: 11 }}
+                angle={-18}
+                textAnchor="end"
+                minTickGap={18}
+                height={56}
+              />
+              <YAxis
+                tick={{ fill: 'rgba(226,232,240,0.75)', fontSize: 11 }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+              />
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
               />

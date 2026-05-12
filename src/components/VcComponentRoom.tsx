@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef, useState, CSSProperties } from "react";
+import {
+  Expand,
+  Minimize2,
+  PanelRightClose,
+  PanelRightOpen,
+} from "lucide-react";
 import VcWrapper from "./VcWrapper";
 import { useSockets } from "../providers/Socket";
 import { useRtc } from "../providers/Rtc";
@@ -11,7 +17,15 @@ const tileStyle: CSSProperties = {
   background: "#1a1a1a",
 };
 
-const VideoTile = ({ stream, muted = false, label = "", placeholder = "" }) => {
+const VideoTile = ({
+  stream,
+  muted = false,
+  label = "",
+  placeholder = "",
+  onToggleFocus,
+  isFocused = false,
+  canToggleFocus = false,
+}) => {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -25,7 +39,15 @@ const VideoTile = ({ stream, muted = false, label = "", placeholder = "" }) => {
   }, [stream]);
 
   return (
-    <div style={tileStyle}>
+    <div
+      style={{
+        ...tileStyle,
+        border: isFocused
+          ? "1px solid rgba(99,102,241,0.7)"
+          : "1px solid rgba(255,255,255,0.08)",
+        boxShadow: isFocused ? "0 0 0 1px rgba(99,102,241,0.4)" : "none",
+      }}
+    >
       <video
         ref={ref}
         autoPlay
@@ -71,16 +93,52 @@ const VideoTile = ({ stream, muted = false, label = "", placeholder = "" }) => {
           {label}
         </span>
       )}
+      {canToggleFocus && (
+        <button
+          type="button"
+          onClick={onToggleFocus}
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            width: 30,
+            height: 30,
+            borderRadius: 8,
+            border: "1px solid rgba(255,255,255,0.16)",
+            background: "rgba(2,6,23,0.72)",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+          }}
+          aria-label={isFocused ? `Restore ${label} tile` : `Enlarge ${label} tile`}
+          title={isFocused ? "Restore size" : "Enlarge participant"}
+        >
+          {isFocused ? <Minimize2 size={15} /> : <Expand size={15} />}
+        </button>
+      )}
     </div>
   );
 };
 
-const VcComponentRoom = ({ onClose, workspaceId, userId, workspaceName }) => {
+const VcComponentRoom = ({
+  onClose,
+  workspaceId,
+  userId,
+  workspaceName,
+  chatPanel,
+}) => {
   const [olCount, setOlCount] = useState(0);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [mediaMessage, setMediaMessage] = useState("Connecting media...");
+  const [focusedTile, setFocusedTile] = useState<"local" | "remote" | null>(
+    null,
+  );
+  const [chatOpen, setChatOpen] = useState(Boolean(chatPanel));
 
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
@@ -97,6 +155,16 @@ const VcComponentRoom = ({ onClose, workspaceId, userId, workspaceName }) => {
     onTrackRef,
     onIceCandidateRef,
   } = useRtc();
+
+  useEffect(() => {
+    setChatOpen(Boolean(chatPanel));
+  }, [chatPanel]);
+
+  useEffect(() => {
+    if (!remoteStream && focusedTile === "remote") {
+      setFocusedTile(null);
+    }
+  }, [focusedTile, remoteStream]);
 
   const ensureReceiverTracks = useCallback(() => {
     const transceivers = peer.getTransceivers?.() || [];
@@ -365,39 +433,148 @@ const VcComponentRoom = ({ onClose, workspaceId, userId, workspaceName }) => {
       }}
       participents={`0${olCount}`}
     >
+      <style>{`
+        @media (max-width: 1100px) {
+          .vc-room-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .vc-chat-panel {
+            min-height: 260px !important;
+          }
+          .vc-chat-open-btn {
+            right: 14px !important;
+            bottom: 14px !important;
+          }
+        }
+      `}</style>
       <div
+        className="vc-room-layout"
         style={{
           flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
           width: "100%",
+          minHeight: 0,
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns:
+            chatPanel && chatOpen ? "minmax(0, 1fr) 360px" : "1fr",
+          position: "relative",
         }}
       >
-        <ScreenShareControls
-          mediaMessage={mediaMessage}
-          isScreenSharing={isScreenSharing}
-          startScreenShare={startScreenShare}
-          stopScreenShare={stopScreenShare}
-        />
         <div
           style={{
             flex: 1,
-            display: "grid",
-            gridTemplateColumns: remoteStream ? "1fr 1fr" : "1fr",
-            gap: 8,
-            padding: 8,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            width: "100%",
             minHeight: 0,
           }}
         >
-          <VideoTile
-            stream={localStream}
-            muted
-            label={isScreenSharing ? "You (Screen)" : "You"}
-            placeholder="No camera/mic available. You are still connected."
+          <ScreenShareControls
+            mediaMessage={mediaMessage}
+            isScreenSharing={isScreenSharing}
+            startScreenShare={startScreenShare}
+            stopScreenShare={stopScreenShare}
           />
-          {remoteStream && <VideoTile stream={remoteStream} label="Peer" />}
+          <div
+            style={{
+              flex: 1,
+              display: "grid",
+              gridTemplateColumns:
+                remoteStream && focusedTile === null ? "1fr 1fr" : "1fr",
+              gap: 8,
+              padding: 8,
+              minHeight: 0,
+            }}
+          >
+            {focusedTile !== "remote" && (
+              <VideoTile
+                stream={localStream}
+                muted
+                label={isScreenSharing ? "You (Screen)" : "You"}
+                placeholder="No camera/mic available. You are still connected."
+                canToggleFocus
+                isFocused={focusedTile === "local"}
+                onToggleFocus={() =>
+                  setFocusedTile((prev) => (prev === "local" ? null : "local"))
+                }
+              />
+            )}
+            {remoteStream && focusedTile !== "local" && (
+              <VideoTile
+                stream={remoteStream}
+                label="Peer"
+                canToggleFocus
+                isFocused={focusedTile === "remote"}
+                onToggleFocus={() =>
+                  setFocusedTile((prev) =>
+                    prev === "remote" ? null : "remote",
+                  )
+                }
+              />
+            )}
+          </div>
         </div>
+
+        {chatPanel && chatOpen && (
+          <div
+            className="vc-chat-panel"
+            style={{ minHeight: 0, height: "100%", position: "relative" }}
+          >
+            <button
+              type="button"
+              onClick={() => setChatOpen(false)}
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                zIndex: 2,
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.16)",
+                background: "rgba(2,6,23,0.72)",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                backdropFilter: "blur(8px)",
+              }}
+              aria-label="Close chat panel"
+              title="Close chat"
+            >
+              <PanelRightClose size={16} />
+            </button>
+            {chatPanel}
+          </div>
+        )}
+        {chatPanel && !chatOpen && (
+          <button
+            type="button"
+            className="vc-chat-open-btn"
+            onClick={() => setChatOpen(true)}
+            style={{
+              position: "absolute",
+              right: 18,
+              bottom: 18,
+              zIndex: 3,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(2,6,23,0.78)",
+              color: "#fff",
+              borderRadius: 12,
+              padding: "8px 12px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              cursor: "pointer",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <PanelRightOpen size={16} />
+            Open Chat
+          </button>
+        )}
       </div>
     </VcWrapper>
   );
