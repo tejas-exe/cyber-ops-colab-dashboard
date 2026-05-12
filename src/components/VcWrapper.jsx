@@ -57,7 +57,7 @@ const VcWrapper = ({ children, workspaceName ,onClose , participents }) => {
                         <h3 className="vc-header-title" style={{
                             margin: 0, fontSize: "1.3rem", fontWeight: 800, color: "#fff",
                             letterSpacing: "-0.02em"
-                        }}>Video Discussion</h3>
+                        }}>{workspaceName} Video Discussion</h3>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
                             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 10px #10b981" }} />
                             <p className="vc-header-subtitle" style={{ margin: 0, fontSize: "0.8rem", color: "rgba(148,163,184,0.7)", fontWeight: 500 }}>

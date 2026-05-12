@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, CSSProperties } from "react";
 import VcWrapper from "./VcWrapper";
 import { useSockets } from "../providers/Socket";
 import { useRtc } from "../providers/Rtc";
+import ScreenShareControls from "./Video/VCControls";
 
 const tileStyle: CSSProperties = {
   position: "relative",
@@ -74,7 +75,7 @@ const VideoTile = ({ stream, muted = false, label = "", placeholder = "" }) => {
   );
 };
 
-const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
+const VcComponentRoom = ({ onClose, workspaceId, userId, workspaceName }) => {
   const [olCount, setOlCount] = useState(0);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
@@ -100,10 +101,14 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
   const ensureReceiverTracks = useCallback(() => {
     const transceivers = peer.getTransceivers?.() || [];
     const hasAudio = transceivers.some(
-      (t) => t?.sender?.track?.kind === "audio" || t?.receiver?.track?.kind === "audio",
+      (t) =>
+        t?.sender?.track?.kind === "audio" ||
+        t?.receiver?.track?.kind === "audio",
     );
     const hasVideo = transceivers.some(
-      (t) => t?.sender?.track?.kind === "video" || t?.receiver?.track?.kind === "video",
+      (t) =>
+        t?.sender?.track?.kind === "video" ||
+        t?.receiver?.track?.kind === "video",
     );
 
     if (!hasAudio) {
@@ -122,7 +127,10 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
       for (const track of tracks) {
         const sender = peer
           .getSenders()
-          .find((s) => s?.track?.kind === track.kind && s.track?.readyState !== "ended");
+          .find(
+            (s) =>
+              s?.track?.kind === track.kind && s.track?.readyState !== "ended",
+          );
 
         if (sender) {
           await sender.replaceTrack(track);
@@ -138,18 +146,29 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
     let stream = null;
 
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
       setMediaMessage("Camera and microphone connected");
     } catch {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true,
+        });
         setMediaMessage("Joined with microphone only");
       } catch {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
           setMediaMessage("Joined with camera only");
         } catch {
-          setMediaMessage("Joined without camera/microphone (listen-only mode)");
+          setMediaMessage(
+            "Joined without camera/microphone (listen-only mode)",
+          );
         }
       }
     }
@@ -186,7 +205,9 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
     setIsScreenSharing(false);
 
     const cameraTrack = localStreamRef.current?.getVideoTracks?.()[0];
-    const videoSender = peer.getSenders().find((sender) => sender.track?.kind === "video");
+    const videoSender = peer
+      .getSenders()
+      .find((sender) => sender.track?.kind === "video");
 
     if (videoSender && cameraTrack) {
       await videoSender.replaceTrack(cameraTrack);
@@ -214,7 +235,9 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
         return;
       }
 
-      const videoSender = peer.getSenders().find((sender) => sender.track?.kind === "video");
+      const videoSender = peer
+        .getSenders()
+        .find((sender) => sender.track?.kind === "video");
 
       if (videoSender) {
         await videoSender.replaceTrack(screenTrack);
@@ -335,47 +358,28 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
 
   return (
     <VcWrapper
-      workspaceName={"Test Vc"}
+      workspaceName={workspaceName}
       onClose={() => {
         socket.emit("leave-video-room", { workSpaceId: workspaceId });
         onClose();
       }}
       participents={`0${olCount}`}
     >
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13 }}>{mediaMessage}</span>
-          <button
-            type="button"
-            onClick={() => {
-              if (isScreenSharing) {
-                void stopScreenShare();
-              } else {
-                void startScreenShare();
-              }
-            }}
-            style={{
-              background: isScreenSharing ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.2)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              color: "#fff",
-              borderRadius: 10,
-              padding: "8px 12px",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            {isScreenSharing ? "Stop Sharing" : "Share Screen"}
-          </button>
-        </div>
-
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          width: "100%",
+        }}
+      >
+        <ScreenShareControls
+          mediaMessage={mediaMessage}
+          isScreenSharing={isScreenSharing}
+          startScreenShare={startScreenShare}
+          stopScreenShare={stopScreenShare}
+        />
         <div
           style={{
             flex: 1,
