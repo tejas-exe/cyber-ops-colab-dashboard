@@ -157,7 +157,9 @@ const VulnerabilityVisualizer = ({ data }) => {
                 <YAxis type="number" dataKey="y" name="Severity" hide domain={[0, 100]} />
                 <ZAxis type="number" dataKey="risk" range={[100, 800]} />
                 <Tooltip
-                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#ffffff' }}
+                  itemStyle={{ color: '#ffffff' }}
+                  labelStyle={{ color: '#ffffff' }}
                 />
                 <Scatter name="CVEs" data={processedData.map((d) => {
                   const typeOffset = d.attackType.charCodeAt(0) * 1337;
