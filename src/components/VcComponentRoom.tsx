@@ -56,7 +56,15 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
   const localStreamRef = useRef(null);
 
   const socket = useSockets();
-  const { createOffer, createAnswer, offerAccepted } = useRtc();
+  const {
+    createOffer,
+    createAnswer,
+    offerAccepted,
+    addIceCandidate,
+    addLocalStream,
+    onTrackRef,
+    onIceCandidateRef,
+  } = useRtc();
 
   const handelMediaStream = async () => {
     try {
@@ -65,14 +73,31 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
         audio: true,
       });
       setLocalStream(stream);
+      addLocalStream(stream);
     } catch (error) {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: false,
         audio: true,
       });
       setLocalStream(stream);
+      addLocalStream(stream);
     }
   };
+
+  useEffect(() => {
+    onTrackRef.current = (stream) => {
+      setRemoteStream(stream);
+    };
+    onIceCandidateRef.current = (candidate) => {
+      socket.emit("ice-candidate", { candidate, workSpaceId: workspaceId });
+    };
+
+    return () => {
+      onTrackRef.current = null;
+      onIceCandidateRef.current = null;
+    };
+  }, [onTrackRef, onIceCandidateRef, socket, workspaceId]);
+
   useEffect(() => {
     handelMediaStream();
     return () => {
@@ -107,17 +132,27 @@ const VcComponentRoom = ({ onClose, workspaceId, userId }) => {
     [offerAccepted],
   );
 
+  const handleIceCandidate = useCallback(
+    async (data) => {
+      const { candidate } = data;
+      if (candidate) await addIceCandidate(candidate);
+    },
+    [addIceCandidate],
+  );
+
   useEffect(() => {
     socket.on("online-user-count", handleOnlineUserCount);
     socket.on("user-joined", handleUserJoined);
     socket.on("incoming-offer", handelIncomingOffer);
     socket.on("offer-accepted", handelOfferAccepted);
+    socket.on("ice-candidate", handleIceCandidate);
 
     return () => {
       socket.off("user-joined", handleUserJoined);
       socket.off("online-user-count", handleOnlineUserCount);
       socket.off("incoming-offer", handelIncomingOffer);
       socket.off("offer-accepted", handelOfferAccepted);
+      socket.off("ice-candidate", handleIceCandidate);
     };
   }, [
     handelIncomingOffer,

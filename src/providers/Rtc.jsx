@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 
 export const RtcContext = createContext(null);
 
@@ -7,8 +7,11 @@ export const useRtc = () => {
 };
 
 export const RtcProvider = (props) => {
+  const onTrackRef = useRef(null);
+  const onIceCandidateRef = useRef(null);
+
   const peer = useMemo(() => {
-    return new RTCPeerConnection({
+    const pc = new RTCPeerConnection({
       iceServers: [
         {
           urls: [
@@ -18,10 +21,27 @@ export const RtcProvider = (props) => {
         },
       ],
     });
+
+    pc.ontrack = (e) => {
+      if (onTrackRef.current && e.streams?.[0]) {
+        onTrackRef.current(e.streams[0]);
+      }
+    };
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate && onIceCandidateRef.current) {
+        onIceCandidateRef.current(e.candidate);
+      }
+    };
+    return pc;
   }, []);
 
+  //! ── functions ───────────────────────────────────────────
   const createOffer = async () => {
-    if (peer.signalingState !== "stable" && peer.localDescription?.type === "offer") {
+    if (
+      peer.signalingState !== "stable" &&
+      peer.localDescription?.type === "offer"
+    ) {
       return peer.localDescription;
     }
     const offer = await peer.createOffer();
@@ -51,9 +71,33 @@ export const RtcProvider = (props) => {
 
     await peer.setRemoteDescription(ans);
   };
+
+  const addLocalStream = useCallback(
+    (stream) => {
+      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    },
+    [peer],
+  );
+
+  const addIceCandidate = useCallback(
+    async (candidate) => {
+      await peer.addIceCandidate(new RTCIceCandidate(candidate));
+    },
+    [peer],
+  );
+
   return (
     <RtcContext.Provider
-      value={{ peer, createOffer, createAnswer, offerAccepted }}
+      value={{
+        peer,
+        createOffer,
+        createAnswer,
+        offerAccepted,
+        addLocalStream,
+        addIceCandidate,
+        onIceCandidateRef,
+        onTrackRef,
+      }}
     >
       {props.children}
     </RtcContext.Provider>
